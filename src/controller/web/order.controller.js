@@ -290,13 +290,15 @@ exports.verifyPayment = async (req, res) => {
       order.payment.status = "failed";
       await order.save();
 
-      // Send failure email
-      await sendEmail(order.shippingAddress.email, "paymentFailed", {
+      // Send failure email asynchronously (don't await)
+      sendEmail(order.shippingAddress.email, "paymentFailed", {
         orderId: order.orderId,
         customerName: order.shippingAddress.name || "Customer",
         orderTotal: `₹${order.pricing.total}`,
         contactEmail: process.env.MY_GMAIL,
-      });
+      }).catch((err) =>
+        console.error("Failed to send payment failure email:", err)
+      );
 
       return res.status(400).json({
         success: false,
@@ -315,7 +317,7 @@ exports.verifyPayment = async (req, res) => {
       });
     }
 
-    // Payment successful - Update order
+    // Payment successful - Update order status first
     order.status = "confirmed";
     order.payment.status = "completed";
     order.payment.verified = true;
@@ -323,13 +325,6 @@ exports.verifyPayment = async (req, res) => {
     order.payment.razorpay.signature = razorpay_signature;
     order.payment.transactionId = razorpay_payment_id;
     order.payment.paidAt = new Date();
-
-    // Reduce stock for each item
-    for (const item of order.items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: -item.quantity },
-      });
-    }
 
     // Generate OTP for delivery
     const deliveryOTP = generateOTP();
@@ -341,29 +336,7 @@ exports.verifyPayment = async (req, res) => {
 
     await order.save();
 
-    // Clear cart if order was from cart
-    if (order.purchaseType === "cart") {
-      await Cart.findOneAndUpdate({ userId }, { $set: { items: [] } });
-    }
-
-    await sendEmail(order.shippingAddress.email, "orderConfirmed", {
-      orderId: order.orderId,
-      packageId: packageId,
-      orderDate: new Date().toLocaleString(),
-      customerName: order.shippingAddress.name || "Customer",
-      orderTotal: order.pricing.total,
-      subtotal: order.pricing.subtotal,
-      discount: order.pricing.discount?.amount || 0,
-      shipping: order.pricing.shipping,
-      total: order.pricing.total,
-      deliveryOTP: deliveryOTP,
-      contactEmail: process.env.MY_GMAIL,
-      items: order.items,
-      shippingAddress: order.shippingAddress,
-      billingAddress: order.billingAddress || order.shippingAddress,
-      paymentMethod: "Online Payment",
-    });
-
+    // Send response immediately
     res.status(200).json({
       success: true,
       message: "Payment verified successfully",
@@ -373,6 +346,69 @@ exports.verifyPayment = async (req, res) => {
         deliveryOTP,
         packageId,
       },
+    });
+
+    // Handle post-response operations asynchronously
+    setImmediate(async () => {
+      try {
+        // Reduce stock for each item
+        const stockUpdatePromises = order.items.map((item) =>
+          Product.findByIdAndUpdate(item.productId, {
+            $inc: { stock: -item.quantity },
+          }).catch((err) =>
+            console.error(
+              `Failed to update stock for product ${item.productId}:`,
+              err
+            )
+          )
+        );
+
+        // Clear cart if order was from cart
+        let cartClearPromise = Promise.resolve();
+        if (order.purchaseType === "cart") {
+          cartClearPromise = Cart.findOneAndUpdate(
+            { userId },
+            { $set: { items: [] } }
+          ).catch((err) => console.error("Failed to clear cart:", err));
+        }
+
+        // Send confirmation email
+        const emailPromise = sendEmail(
+          order.shippingAddress.email,
+          "orderConfirmed",
+          {
+            orderId: order.orderId,
+            packageId: packageId,
+            orderDate: new Date().toLocaleString(),
+            customerName: order.shippingAddress.name || "Customer",
+            orderTotal: order.pricing.total,
+            subtotal: order.pricing.subtotal,
+            discount: order.pricing.discount?.amount || 0,
+            shipping: order.pricing.shipping,
+            total: order.pricing.total,
+            deliveryOTP: deliveryOTP,
+            contactEmail: process.env.MY_GMAIL,
+            items: order.items,
+            shippingAddress: order.shippingAddress,
+            billingAddress: order.billingAddress || order.shippingAddress,
+            paymentMethod: "Online Payment",
+          }
+        ).catch((err) =>
+          console.error("Failed to send order confirmation email:", err)
+        );
+
+        // Wait for all operations to complete
+        await Promise.all([
+          ...stockUpdatePromises,
+          cartClearPromise,
+          emailPromise,
+        ]);
+
+        console.log(`Post-payment operations completed for order ${orderId}`);
+      } catch (error) {
+        console.error("Error in post-payment operations:", error);
+        // Consider implementing a retry mechanism or dead letter queue here
+      }
     });
   } catch (error) {
     console.error("Verify Payment Error:", error);
@@ -725,7 +761,7 @@ exports.sendDeliveryOTP = async (req, res) => {
   try {
     const { orderId } = req.body;
     const order = await Order.findOne({ orderId }).lean();
-    
+
     if (!order) {
       return res.status(404).json({
         success: false,
