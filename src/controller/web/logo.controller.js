@@ -11,7 +11,7 @@ exports.logoController = async (req, res) => {
         _data: logoDataCache,
       });
     }
-    const logoData = await logo.find().lean();
+    const logoData = await logo.find({status: true , deletedAt: null}).lean();
     cache.set("logoData", logoData);
 
     res.status(200).json({

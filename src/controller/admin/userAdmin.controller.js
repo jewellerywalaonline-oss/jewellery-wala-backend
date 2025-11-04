@@ -162,3 +162,26 @@ exports.changeRole = async (req, res) => {
     });
   }
 };
+
+exports.userDelete = async (req, res) => {
+  try {
+    const user = await userModel.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        _status: false,
+        _message: "User not found",
+      });
+    }
+    return res.status(200).json({
+      _status: true,
+      _message: "User deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error in userDelete:", error);
+    res.status(500).json({
+      _status: false,
+      _message: "Error deleting user",
+      error: error.message,
+    });
+  }
+};

@@ -19,7 +19,7 @@ exports.create = async (req, res) => {
     }
 
     const logo = await logoModal.create(data);
-    cache.del("logoData"); 
+    cache.del("logoData");
     const output = {
       _status: true,
       _message: "Logo Created Successfully",
@@ -41,7 +41,9 @@ exports.create = async (req, res) => {
 // get all logos
 exports.view = async (req, res) => {
   try {
-    const logos = await logoModal.find({}).sort({ createdAt: "desc" });
+    const logos = await logoModal
+      .find({ deletedAt: null })
+      .sort({ createdAt: "desc" });
 
     const output = {
       _status: logos.length > 0,
@@ -84,7 +86,6 @@ exports.update = async (req, res) => {
 
       if (uploadResult.success) {
         // Delete old image from R2 if exists
-       
 
         data.logo = uploadResult.url;
       } else {
@@ -92,18 +93,16 @@ exports.update = async (req, res) => {
       }
     }
 
-
-    const logo = await logoModal.findByIdAndUpdate(
-      req.params.id,
-      { $set: data },
-    );
+    const logo = await logoModal.findByIdAndUpdate(req.params.id, {
+      $set: data,
+    });
 
     const output = {
       _status: true,
       _message: "Logo Updated Successfully",
       _data: logo,
     };
-    cache.del("logoData"); 
+    cache.del("logoData");
     res.status(200).json(output);
   } catch (error) {
     const output = {
@@ -139,7 +138,7 @@ exports.destroy = async (req, res) => {
       _message: "Logo Deleted Permanently",
       _data: logo,
     };
-    cache.del("logoData"); 
+    cache.del("logoData");
     res.status(200).json(output);
   } catch (error) {
     const output = {
@@ -175,7 +174,7 @@ exports.changeStatus = async (req, res) => {
       _message: "Status Changed Successfully",
       _data: logo,
     };
-    cache.del("logoData"); 
+    cache.del("logoData");
     res.status(200).json(output);
   } catch (error) {
     const output = {

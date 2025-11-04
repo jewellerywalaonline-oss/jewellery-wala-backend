@@ -25,6 +25,8 @@ exports.contact = async (req, res) => {
         replyTo: email,
       }
     );
+    console.log(email);
+    
 
     return res.status(200).json({
       _status: true,
