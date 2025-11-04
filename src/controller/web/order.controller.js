@@ -161,26 +161,7 @@ exports.createOrder = async (req, res) => {
 
     await order.save();
 
-    try {
-      const user = await userModel.findById(userId);
-
-      if (!user.mobile || user.mobile === "") {
-        user.mobile = shippingAddress.phone;
-        user.isMobileVerified = true;
-      }
-      if (user.address.pincode == "")
-        user.address.pincode = shippingAddress.pincode;
-      if (user.address.state == "") user.address.state = shippingAddress.state;
-      if (user.address.city == "") user.address.city = shippingAddress.city;
-      if (user.address.street == "")
-        user.address.street = shippingAddress.street;
-      if (user.address.area == "") user.address.area = shippingAddress.area;
-
-      await user.save();
-    } catch (error) {
-      console.log(error);
-    }
-
+    // Send response immediately
     res.status(201).json({
       success: true,
       message: "Order created successfully",
@@ -189,6 +170,35 @@ exports.createOrder = async (req, res) => {
         _id: order._id,
         total: order.pricing.total,
       },
+    });
+
+    // Update user details asynchronously after response
+    setImmediate(async () => {
+      try {
+        const user = await userModel.findById(userId);
+
+        if (!user) {
+          console.error(`User not found: ${userId}`);
+          return;
+        }
+
+        if (!user.mobile || user.mobile === "") {
+          user.mobile = shippingAddress.phone;
+          user.isMobileVerified = true;
+        }
+        if (!user?.address?.pincode)
+          user.address.pincode = shippingAddress.pincode;
+        if (!user?.address?.state) user.address.state = shippingAddress.state;
+        if (!user?.address?.city) user.address.city = shippingAddress.city;
+        if (!user?.address?.street)
+          user.address.street = shippingAddress.street;
+        if (!user?.address?.area) user.address.area = shippingAddress.area;
+
+        await user.save();
+        console.log(`User details updated for userId: ${userId}`);
+      } catch (error) {
+        console.error("Error updating user details:", error);
+      }
     });
   } catch (error) {
     console.error("Create Order Error:", error);
