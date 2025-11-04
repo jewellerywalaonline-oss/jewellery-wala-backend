@@ -95,7 +95,7 @@ exports.createOrder = async (req, res) => {
           });
         }
 
-        const itemSubtotal = product.price * item.quantity;
+        const itemSubtotal = product.discount_price * item.quantity;
         subtotal += itemSubtotal;
 
         orderItems.push({
@@ -104,9 +104,9 @@ exports.createOrder = async (req, res) => {
           name: product.name,
           description: product.description,
           quantity: item.quantity,
-          isPersonalized: item.isPersonalized || false,
-          personalizedName: item.isPersonalized ? isPersonalizedName : null,
-          priceAtPurchase: product.price,
+          isPersonalized: product.isPersonalized || false,
+          personalizedName: product.isPersonalized ? isPersonalizedName : null,
+          priceAtPurchase: product.discount_price,
           subtotal: itemSubtotal,
           addedFrom: "direct",
           images: product.images,
