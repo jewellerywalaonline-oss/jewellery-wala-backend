@@ -779,9 +779,11 @@ exports.sendDeliveryOTP = async (req, res) => {
       });
     }
 
+    console.log("sending email");
     try {
+      
       // Send delivery OTP email
-      await sendEmail(order.shippingAddress.email, "orderDeliveryOTP", {
+      sendEmail(order.shippingAddress.email, "orderDeliveryOTP", {
         user: {
           name: order.shippingAddress.name,
           email: order.shippingAddress.email,

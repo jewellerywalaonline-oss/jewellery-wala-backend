@@ -98,7 +98,7 @@ const sendEmail = async (to, templateName, data = {}) => {
     const { subject, html } = await renderTemplate(templateName, data);
 
     const mailOptions = {
-      from: `"${process.env.EMAIL_FROM_NAME || "Jewellery Walla"}" <${
+      from: `"${process.env.APP_NAME}" <${
         process.env.MY_GMAIL
       }>`,
       to,

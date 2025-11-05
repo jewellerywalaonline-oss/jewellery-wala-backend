@@ -165,13 +165,15 @@ exports.changeRole = async (req, res) => {
 
 exports.userDelete = async (req, res) => {
   try {
-    const user = await userModel.findByIdAndDelete(req.params.id);
+    const user = await userModel.findById(req.params.id);
     if (!user) {
       return res.status(404).json({
         _status: false,
         _message: "User not found",
       });
     }
+    user.deletedAt = new Date();
+    await user.save();
     return res.status(200).json({
       _status: true,
       _message: "User deleted successfully",
