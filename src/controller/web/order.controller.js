@@ -301,7 +301,7 @@ exports.verifyPayment = async (req, res) => {
       await order.save();
 
       // Send failure email asynchronously (don't await)
-      sendEmail(order.shippingAddress.email, "paymentFailed", {
+      await sendEmail(order.shippingAddress.email, "paymentFailed", {
         orderId: order.orderId,
         customerName: order.shippingAddress.name || "Customer",
         orderTotal: `₹${order.pricing.total}`,
@@ -383,7 +383,7 @@ exports.verifyPayment = async (req, res) => {
         }
 
         // Send confirmation email
-        const emailPromise = sendEmail(
+        const emailPromise = await sendEmail(
           order.shippingAddress.email,
           "orderConfirmed",
           {
@@ -690,7 +690,7 @@ exports.verifyDeliveryOTP = async (req, res) => {
     });
 
     // Send delivery confirmation email asynchronously (after response)
-    sendEmail(order.shippingAddress.email, "orderDelivered", {
+    await sendEmail(order.shippingAddress.email, "orderDelivered", {
       user: {
         name: order.shippingAddress.name,
         email: order.shippingAddress.email,
@@ -745,7 +745,7 @@ exports.markToShipped = async (req, res) => {
     });
 
     // Send shipping confirmation email asynchronously (after response)
-    sendEmail(order.shippingAddress.email, "orderShipped", {
+    await sendEmail(order.shippingAddress.email, "orderShipped", {
       user: {
         name: order.shippingAddress.name,
         email: order.shippingAddress.email,

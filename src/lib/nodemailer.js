@@ -12,11 +12,14 @@ const createTransporter = async () => {
   }
 
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: {
       user: process.env.MY_GMAIL,
-      pass: process.env.MY_GMAIL_PASSWORD, // use App Password, not normal password
+      pass: process.env.MY_GMAIL_PASSWORD,
     },
+    connectionTimeout: 20000, // 20 seconds
   });
 
   // Optional: verify connection
