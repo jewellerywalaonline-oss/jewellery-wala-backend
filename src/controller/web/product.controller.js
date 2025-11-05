@@ -121,7 +121,6 @@ exports.getByCategory = async (req, res) => {
   }
 };
 
-
 exports.getProductByFilter = async (req, res) => {
   try {
     const {
@@ -145,7 +144,6 @@ exports.getProductByFilter = async (req, res) => {
       deletedAt: null,
       status: true,
     };
-
     // ✅ Boolean filters
     if (isFeatured !== undefined) query.isFeatured = isFeatured;
     if (isNewArrival !== undefined) query.isNewArrival = isNewArrival;
@@ -221,7 +219,6 @@ exports.getProductByFilter = async (req, res) => {
       .populate("material", "name ")
       .limit(limit)
       .skip(skip)
-      .sort("-createdAt")
       .lean();
 
     res.send({
@@ -535,11 +532,7 @@ exports.tabProducts = async (req, res) => {
         .populate("category", "name slug")
         .populate("subCategory", "name slug")
         .populate("subSubCategory", "name slug")
-        .populate({
-          path: "material",
-          match: { name: { $regex: "gold", $options: "i" } },
-          select: "name code",
-        })
+        .populate("colors", "name code")
         .sort("-createdAt")
         .limit(4)
         .lean(),
@@ -558,11 +551,7 @@ exports.tabProducts = async (req, res) => {
         .populate("category", "name slug")
         .populate("subCategory", "name slug")
         .populate("subSubCategory", "name slug")
-        .populate({
-          path: "material",
-          match: { name: { $regex: "silver", $options: "i" } },
-          select: "name code",
-        })
+        .populate("colors", "name code")
         .sort("-createdAt")
         .limit(4)
         .skip(4)

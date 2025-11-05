@@ -559,13 +559,6 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
-    // Restore stock
-    for (const item of order.items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: item.quantity },
-      });
-    }
-
     // Update order status
     order.status = "cancelled";
     order.cancellation = {
@@ -606,31 +599,43 @@ exports.cancelOrder = async (req, res) => {
 
     await order.save();
 
-    // Send cancellation email
-    try {
-      await sendEmail(order.shippingAddress.email, "orderCancelled", {
-        user: {
-          name: order.shippingAddress.name,
-          email: order.shippingAddress.email,
-        },
-        order: {
-          _id: order._id,
-          orderId: order.orderId,
-          createdAt: order.createdAt,
-          pricing: order.pricing,
-          cancellation: order.cancellation,
-          shippingAddress: order.shippingAddress,
-          pendingStatus: order.payment.status ? true : false,
-        },
-      });
-    } catch (emailError) {
-      console.error("Failed to send cancellation email:", emailError);
-    }
-
+    // Send response first
     res.status(200).json({
       success: true,
       message: "Order cancelled successfully",
       order,
+    });
+
+    // Restore stock asynchronously (after response)
+    (async () => {
+      try {
+        for (const item of order.items) {
+          await Product.findByIdAndUpdate(item.productId, {
+            $inc: { stock: item.quantity },
+          });
+        }
+      } catch (stockError) {
+        console.error("Failed to restore stock:", stockError);
+      }
+    })();
+
+    // Send cancellation email asynchronously (after response)
+    sendEmail(order.shippingAddress.email, "orderCancelled", {
+      user: {
+        name: order.shippingAddress.name,
+        email: order.shippingAddress.email,
+      },
+      order: {
+        _id: order._id,
+        orderId: order.orderId,
+        createdAt: order.createdAt,
+        pricing: order.pricing,
+        cancellation: order.cancellation,
+        shippingAddress: order.shippingAddress,
+        pendingStatus: order.payment.status ? true : false,
+      },
+    }).catch((emailError) => {
+      console.error("Failed to send cancellation email:", emailError);
     });
   } catch (error) {
     console.error("Cancel Order Error:", error);
@@ -676,31 +681,30 @@ exports.verifyDeliveryOTP = async (req, res) => {
     order.status = "delivered";
     order.shipping.deliveredAt = new Date();
 
-    try {
-      await sendEmail(order.shippingAddress.email, "orderDelivered", {
-        user: {
-          name: order.shippingAddress.name,
-          email: order.shippingAddress.email,
-        },
-        order: {
-          _id: order._id,
-          orderId: order.orderId,
-          shipping: order.shipping,
-          shippingAddress: order.shippingAddress,
-          items: order.items,
-          totalAmount: order.pricing.total,
-        },
-      });
-    } catch (emailError) {
-      console.error("Failed to send delivery confirmation email:", emailError);
-      // Don't fail the request if email fails
-    }
-
     await order.save();
 
+    // Send response first
     res.status(200).json({
       success: true,
       message: "Order delivered successfully",
+    });
+
+    // Send delivery confirmation email asynchronously (after response)
+    sendEmail(order.shippingAddress.email, "orderDelivered", {
+      user: {
+        name: order.shippingAddress.name,
+        email: order.shippingAddress.email,
+      },
+      order: {
+        _id: order._id,
+        orderId: order.orderId,
+        shipping: order.shipping,
+        shippingAddress: order.shippingAddress,
+        items: order.items,
+        totalAmount: order.pricing.total,
+      },
+    }).catch((emailError) => {
+      console.error("Failed to send delivery confirmation email:", emailError);
     });
   } catch (error) {
     console.error("Verify OTP Error:", error);
@@ -734,26 +738,24 @@ exports.markToShipped = async (req, res) => {
     order.status = "shipped";
     await order.save();
 
-    try {
-      // Send shipping confirmation email
-      await sendEmail(order.shippingAddress.email, "orderShipped", {
-        user: {
-          name: order.shippingAddress.name,
-          email: order.shippingAddress.email,
-        },
-        order: {
-          _id: order._id,
-          orderId: order.orderId,
-        },
-      });
-    } catch (emailError) {
-      console.error("Failed to send shipping email:", emailError);
-      // Don't fail the request if email fails
-    }
-
+    // Send response first
     res.status(200).json({
       success: true,
       message: "Order marked as shipped successfully",
+    });
+
+    // Send shipping confirmation email asynchronously (after response)
+    sendEmail(order.shippingAddress.email, "orderShipped", {
+      user: {
+        name: order.shippingAddress.name,
+        email: order.shippingAddress.email,
+      },
+      order: {
+        _id: order._id,
+        orderId: order.orderId,
+      },
+    }).catch((emailError) => {
+      console.error("Failed to send shipping email:", emailError);
     });
   } catch (error) {
     console.error("Mark to Shipped Error:", error);
@@ -764,9 +766,7 @@ exports.markToShipped = async (req, res) => {
     });
   }
 };
-// In src/controller/web/order.controller.js
 
-// Add this function before the module.exports
 exports.sendDeliveryOTP = async (req, res) => {
   try {
     const { orderId } = req.body;
@@ -811,7 +811,6 @@ exports.sendDeliveryOTP = async (req, res) => {
   }
 };
 
-//
 exports.getAllOrders = async (req, res) => {
   let query = { deletedAt: null };
   if (req.body.status) {
@@ -839,7 +838,6 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
-// razorpay webhook
 exports.handleWebhook = async (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
