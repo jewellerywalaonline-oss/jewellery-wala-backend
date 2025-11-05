@@ -345,19 +345,16 @@ module.exports.verifyOtp = async (req, res) => {
 };
 
 module.exports.resetPassword = async (req, res) => {
-  if (!req.body || !req.body.token || !req.body.newPassword) {
-    return res.status(400).json({
-      _status: false,
-      _message: "Token and new password are required",
-    });
-  }
-  const user = req.user;
+ 
+  const userEmail = req?.user?.email || req?.body?.email;
 
   try {
     const { newPassword } = req.body;
 
     // Find user by email
-    const userData = await userModel.findOne({ email: user.email });
+    const userData = await userModel.findOne({
+      email: userEmail,
+    });
     if (!userData) {
       return res.status(404).json({
         _status: false,
@@ -369,7 +366,7 @@ module.exports.resetPassword = async (req, res) => {
     const hashedPassword = await hashPassword(newPassword);
 
     // Update user's password
-    user.password = hashedPassword;
+    userData.password = hashedPassword;
     await userData.save();
 
     return res.status(200).json({

@@ -29,6 +29,7 @@
     "node-cache": "^5.1.2",
     "nodemailer": "^7.0.6",
     "razorpay": "^2.9.6",
+    "resend": "^6.4.1",
     "sharp": "^0.34.4",
     "slugify": "^1.6.6",
     "twilio": "^5.10.3"

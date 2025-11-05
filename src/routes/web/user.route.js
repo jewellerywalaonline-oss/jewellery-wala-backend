@@ -44,17 +44,15 @@ router.post(
 router.post(
   "/forgot-password",
   rateLimit.passwordReset,
-  protect,
   uploadNone,
   forgotPassword
 );
 
-router.post("/verify-otp", protect, uploadNone, verifyOtp);
+router.post("/verify-otp", uploadNone, verifyOtp);
 
 router.post(
   "/reset-password",
   rateLimit.passwordReset,
-  protect,
   uploadNone,
   resetPassword
 );
