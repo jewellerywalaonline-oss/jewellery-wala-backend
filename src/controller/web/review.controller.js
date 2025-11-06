@@ -29,7 +29,6 @@ exports.createReview = async (req, res) => {
       userId,
       productId,
     });
-    console.log(existingReview);
     if (existingReview) {
       return res.status(400).json({
         _status: false,
@@ -50,6 +49,16 @@ exports.createReview = async (req, res) => {
       _status: true,
       _message: "Review submitted successfully",
       _data: review,
+    });
+
+    setImmediate(async () => {
+      const reviews = await Reviews.find({ productId });
+      const avgRating =
+        reviews.reduce((a, b) => a + b.rating, 0) / reviews.length;
+      await Product.findByIdAndUpdate(productId, {
+        rating: avgRating.toFixed(1),
+        reviewCount: reviews.length,
+      });
     });
   } catch (error) {
     res.status(500).json({

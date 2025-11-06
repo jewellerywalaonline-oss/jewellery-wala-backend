@@ -217,6 +217,9 @@ exports.getProductByFilter = async (req, res) => {
       .populate("subSubCategory", "name slug")
       .populate("colors", "name code")
       .populate("material", "name ")
+      .select(
+        "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+      )
       .limit(limit)
       .skip(skip)
       .lean();
@@ -277,6 +280,9 @@ exports.getBySearch = async (req, res) => {
       .populate("subSubCategory", "name slug")
       .populate("colors", "name code")
       .populate("material", "name ")
+      .select(
+        "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+      )
       .sort("-createdAt")
       .limit(20)
       .lean();
@@ -306,6 +312,9 @@ exports.getAll = async (req, res) => {
       .populate("category", "name slug")
       .populate("subCategory", "name slug")
       .populate("subSubCategory", "name slug")
+      .select(
+        "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+      )
       .sort("-createdAt")
       .lean();
     res.send({
@@ -340,6 +349,9 @@ exports.relatedProducts = async (req, res) => {
         .populate("subCategory", "name slug")
         .populate("subSubCategory", "name slug")
         .populate("colors", "name code")
+        .select(
+          "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+        )
         .populate("material", "name")
         .lean();
     }
@@ -406,6 +418,9 @@ exports.newArrivals = async (req, res) => {
       .populate("subSubCategory", "name slug")
       .populate("colors", "name code")
       .populate("material", "name ")
+      .select(
+        "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+      )
       .sort("-createdAt")
       .limit(20)
       .lean();
@@ -446,6 +461,9 @@ exports.trendingProducts = async (req, res) => {
       .populate("subSubCategory", "name slug")
       .populate("colors", "name code")
       .populate("material", "name ")
+      .select(
+        "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+      )
       .sort("-createdAt")
       .limit(20)
       .lean();
@@ -486,6 +504,9 @@ exports.featuredForFooter = async (req, res) => {
       .populate("subSubCategory", "name slug")
       .populate("colors", "name code")
       .populate("material", "name ")
+      .select(
+        "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+      )
       .sort("-createdAt")
       .limit(2)
       .lean();
@@ -533,6 +554,9 @@ exports.tabProducts = async (req, res) => {
         .populate("subCategory", "name slug")
         .populate("subSubCategory", "name slug")
         .populate("colors", "name code")
+        .select(
+          "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+        )
         .sort("-createdAt")
         .limit(4)
         .lean(),

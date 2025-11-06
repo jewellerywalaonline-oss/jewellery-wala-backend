@@ -74,10 +74,10 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please enter a description"],
     },
-    
+
     purity: {
       type: String,
-     required: [true, "Please enter a purity"],
+      required: [true, "Please enter a purity"],
     },
     code: {
       type: String,
@@ -135,6 +135,14 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    rating: {
+      type: Number,
+      default: null,
+    },
+    reviewCount: {
+      type: Number,
+      default: 0,
+    },
     order: {
       type: Number,
       default: 0,
@@ -152,9 +160,7 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-
 productSchema.index({ slug: 1 });
-
 productSchema.index({ category: 1 });
 productSchema.index({ subCategory: 1 });
 productSchema.index({ subSubCategory: 1 });
