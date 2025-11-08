@@ -29,7 +29,7 @@ const generateFileName = (originalName, folder = "") => {
 /**
  * Optimize image using Sharp
  */
-const optimizeImage = async (buffer, options ) => {
+const optimizeImage = async (buffer, options) => {
   return await sharp(buffer)
     .resize({
       width: 1200,
@@ -51,9 +51,9 @@ const uploadToR2 = async (file, folder = "users") => {
     // Generate unique filename
     let fileBuffer;
     if (file.size < 1024 * 1024 * 0.5) {
-      fileBuffer = await optimizeImage(file.buffer, { quality: 100 });
-    } else {
       fileBuffer = await optimizeImage(file.buffer, { quality: 90 });
+    } else {
+      fileBuffer = await optimizeImage(file.buffer, { quality: 85 });
     }
     let fileName = generateFileName(file.originalname, folder);
     let contentType = "image/webp";

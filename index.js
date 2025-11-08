@@ -2,7 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-
+const compression = require("compression");
 require("dotenv").config();
 const app = express();
 
@@ -15,14 +15,34 @@ app.use((req, res, next) => {
   }
 });
 
+app.use(
+  compression({
+    threshold: 1024,
+    level: 6,
+    filter: (req, res) => {
+      if (req.headers["x-no-compression"]) return false;
+      return compression.filter(req, res);
+    },
+  })
+);
+
 // npm install express body-parser
 app.use(bodyParser.json());
 
 app.use(cors());
+// {
+//     origin: [
+//       "http://localhost:3000",
+//       "https://jewellery-wala-adminpanel.vercel.app",
+//       "https://jewellerywalla.com",
+//     ],
+//     credentials: true,
+//     allowedHeaders: "*",
+//     methods: "*",
+//   }
 
-// parse requests of content-type - application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: true }));
-// website routes variables
+
 const userRoutes = require("./src/routes/web/user.route");
 const productRoutes = require("./src/routes/web/product.routes");
 const cartRoutes = require("./src/routes/web/cart.routes");

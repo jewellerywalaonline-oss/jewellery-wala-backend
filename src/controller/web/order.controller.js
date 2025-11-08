@@ -680,6 +680,10 @@ exports.verifyDeliveryOTP = async (req, res) => {
 
     order.status = "delivered";
     order.shipping.deliveredAt = new Date();
+    if (order.payment.method === "cod") {
+      order.payment.status = "completed";
+      order.payment.paidAt = new Date();
+    }
 
     await order.save();
 
@@ -781,7 +785,6 @@ exports.sendDeliveryOTP = async (req, res) => {
 
     console.log("sending email");
     try {
-      
       // Send delivery OTP email
       sendEmail(order.shippingAddress.email, "orderDeliveryOTP", {
         user: {
@@ -839,6 +842,8 @@ exports.getAllOrders = async (req, res) => {
     });
   }
 };
+
+/////////////////////////////////////////
 
 exports.handleWebhook = async (req, res) => {
   try {
@@ -922,3 +927,167 @@ async function handleRefundCreated(refundData) {
     await order.save();
   }
 }
+//////////////////////////////////////////
+
+exports.confirmCODOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    const userId = req.user._id;
+
+    // Find order
+    const order = await Order.findOne({ orderId, userId }).populate(
+      "items.productId"
+    );
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Calculate COD charges (e.g., ₹50 for COD)
+    const codCharges = 50;
+
+    // Update order total with COD charges
+    order.pricing.total += codCharges;
+
+    // Update payment details
+    order.payment.method = "cod";
+    order.payment.status = "pending"; // Will be completed on delivery
+    order.payment.codCharges = codCharges;
+    order.payment.verified = true; // COD is auto-verified
+
+    // Update order status to confirmed
+    order.status = "confirmed";
+
+    // Add to status history
+    order.statusHistory.push({
+      status: "confirmed",
+      timestamp: new Date(),
+      note: "Order confirmed with Cash on Delivery",
+      updatedBy: userId,
+    });
+
+    // Generate OTP for delivery
+    const deliveryOTP = generateOTP();
+    order.notes.internal = `Delivery OTP: ${deliveryOTP}`;
+
+    // Generate package ID
+    const packageId = generatePackageId();
+    order.packageId = packageId;
+
+    await order.save();
+
+    // Send response immediately
+    res.status(200).json({
+      success: true,
+      message: "COD order confirmed successfully",
+      order: {
+        orderId: order.orderId,
+        status: order.status,
+        deliveryOTP,
+        packageId,
+      },
+    });
+
+    // Handle post-response operations asynchronously
+    setImmediate(async () => {
+      try {
+        // Reduce stock for each item
+        const stockUpdatePromises = order.items.map((item) =>
+          Product.findByIdAndUpdate(item.productId, {
+            $inc: { stock: -item.quantity },
+          }).catch((err) =>
+            console.error(
+              `Failed to update stock for product ${item.productId}:`,
+              err
+            )
+          )
+        );
+
+        // Clear cart if order was from cart
+        let cartClearPromise = Promise.resolve();
+        if (order.purchaseType === "cart") {
+          cartClearPromise = Cart.findOneAndUpdate(
+            { user: userId },
+            { $set: { items: [] } }
+          ).catch((err) => console.error("Failed to clear cart:", err));
+        }
+
+        // Send confirmation email
+        const emailPromise = await sendEmail(
+          order.shippingAddress.email,
+          "orderConfirmed",
+          {
+            orderId: order.orderId,
+            packageId: packageId,
+            orderDate: new Date().toLocaleString(),
+            customerName: order.shippingAddress.fullName || "Customer",
+            orderTotal: order.pricing.total,
+            subtotal: order.pricing.subtotal,
+            discount: order.pricing.discount?.amount || 0,
+            shipping: order.pricing.shipping,
+            codCharges: codCharges,
+            total: order.pricing.total,
+            deliveryOTP: deliveryOTP,
+            contactEmail: process.env.MY_GMAIL,
+            items: order.items,
+            shippingAddress: order.shippingAddress,
+            billingAddress: order.billingAddress || order.shippingAddress,
+            paymentMethod: "Cash on Delivery (COD)",
+          }
+        ).catch((err) =>
+          console.error("Failed to send order confirmation email:", err)
+        );
+
+        // Wait for all operations to complete
+        await Promise.all([
+          ...stockUpdatePromises,
+          cartClearPromise,
+          emailPromise,
+        ]);
+
+        console.log(
+          `Post-COD confirmation operations completed for order ${orderId}`
+        );
+      } catch (error) {
+        console.error("Error in post-COD confirmation operations:", error);
+        // Consider implementing a retry mechanism or dead letter queue here
+      }
+    });
+  } catch (error) {
+    console.error("COD Order Confirmation Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to confirm COD order",
+      error: error.message,
+    });
+  }
+};
+
+// Optional: Get COD charges before order creation
+exports.getCODCharges = async (req, res) => {
+  try {
+    const { total } = req.query;
+
+    // You can have dynamic COD charges based on order value
+    let codCharges = 50; // Base COD charge
+
+    if (parseFloat(total) > 1000) {
+      codCharges = 0; // Free COD for orders above ₹2000
+    }
+
+    res.status(200).json({
+      success: true,
+      codCharges,
+      message:
+        codCharges === 0 ? "Free COD available" : `COD charges: ₹${codCharges}`,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to get COD charges",
+    });
+  }
+};

@@ -54,7 +54,7 @@ module.exports.getCart = async (req, res) => {
       _status: true,
       _message: "Cart retrieved successfully",
       _data: {
-        items,
+        items: items,
         totalItems,
         totalPrice: parseFloat(totalPrice.toFixed(2)),
       },
@@ -400,3 +400,6 @@ module.exports.clearCart = async (req, res) => {
     session.endSession();
   }
 };
+
+// cart count
+

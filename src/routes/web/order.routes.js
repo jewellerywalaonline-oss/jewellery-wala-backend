@@ -12,6 +12,7 @@ const {
   getAllOrders,
   getOrder,
   sendDeliveryOTP,
+  confirmCODOrder,
 } = require("../../controller/web/order.controller.js");
 const protect = require("../../middleware/authMiddleware.js"); // Your auth middleware
 const { uploadNone } = require("../../middleware/uploadMiddleware.js");
@@ -49,7 +50,15 @@ router.post(
 router.post("/verify-delivery-otp", protect, uploadNone, verifyDeliveryOTP);
 
 router.post("/mark-to-shipped", protect, uploadNone, markToShipped);
-router.post("/send-delivery-otp", protect, rateLimit.sendDeliveryOTP, uploadNone, sendDeliveryOTP);
+router.post(
+  "/send-delivery-otp",
+  protect,
+  rateLimit.sendDeliveryOTP,
+  uploadNone,
+  sendDeliveryOTP
+);
+
+router.post("/buy-with-cod", protect, uploadNone, confirmCODOrder);
 
 router.post("/all", protect, uploadNone, getAllOrders);
 

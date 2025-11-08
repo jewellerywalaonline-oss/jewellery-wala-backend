@@ -202,6 +202,8 @@ module.exports.removeFromWishlist = async (req, res) => {
   }
 };
 
+
+
 // Check if product is in wishlist
 module.exports.checkInWishlist = async (req, res) => {
   try {
