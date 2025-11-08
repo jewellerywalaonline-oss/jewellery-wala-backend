@@ -13,7 +13,7 @@ module.exports.getWishlist = async (req, res) => {
       return res.status(200).json({
         _status: true,
         _message: "Your wishlist is empty",
-        _data: { items: [] },
+        _data: [],
       });
     }
 
@@ -201,8 +201,6 @@ module.exports.removeFromWishlist = async (req, res) => {
     session.endSession();
   }
 };
-
-
 
 // Check if product is in wishlist
 module.exports.checkInWishlist = async (req, res) => {
