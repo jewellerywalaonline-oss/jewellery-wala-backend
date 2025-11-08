@@ -946,16 +946,9 @@ exports.confirmCODOrder = async (req, res) => {
       });
     }
 
-    // Calculate COD charges (e.g., ₹50 for COD)
-    const codCharges = 50;
-
-    // Update order total with COD charges
-    order.pricing.total += codCharges;
-
     // Update payment details
     order.payment.method = "cod";
     order.payment.status = "pending"; // Will be completed on delivery
-    order.payment.codCharges = codCharges;
     order.payment.verified = true; // COD is auto-verified
 
     // Update order status to confirmed
