@@ -1021,7 +1021,6 @@ exports.confirmCODOrder = async (req, res) => {
             subtotal: order.pricing.subtotal,
             discount: order.pricing.discount?.amount || 0,
             shipping: order.pricing.shipping,
-            codCharges: codCharges,
             total: order.pricing.total,
             deliveryOTP: deliveryOTP,
             contactEmail: process.env.MY_GMAIL,
