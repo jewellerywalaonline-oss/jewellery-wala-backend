@@ -37,7 +37,7 @@ const optimizeImage = async (buffer, options) => {
       withoutEnlargement: true,
     })
     .toFormat("webp", {
-      quality: options.quality || 90,
+      quality: options.quality || 75,
       effort: 6,
     })
     .toBuffer();
@@ -46,14 +46,16 @@ const optimizeImage = async (buffer, options) => {
 /**
  * Upload file to Cloudflare R2
  */
-const uploadToR2 = async (file, folder = "users") => {
+const uploadToR2 = async (file, folder = "users", quality = 80) => {
   try {
     // Generate unique filename
     let fileBuffer;
-    if (file.size < 1024 * 1024 * 0.5) {
-      fileBuffer = await optimizeImage(file.buffer, { quality: 90 });
+    if (folder === "banner") {
+      fileBuffer = await optimizeImage(file.buffer, { quality: 80 });
+    } else if (folder === "products") {
+      fileBuffer = await optimizeImage(file.buffer, { quality: quality || 75 });
     } else {
-      fileBuffer = await optimizeImage(file.buffer, { quality: 85 });
+      fileBuffer = await optimizeImage(file.buffer, { quality: 70 });
     }
     let fileName = generateFileName(file.originalname, folder);
     let contentType = "image/webp";

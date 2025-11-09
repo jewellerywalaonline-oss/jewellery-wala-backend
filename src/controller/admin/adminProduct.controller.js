@@ -18,7 +18,8 @@ exports.create = async (request, response) => {
       if (request.files.image && request.files.image[0]) {
         const uploadResult = await uploadToR2(
           request.files.image[0],
-          "products"
+          "products",
+          85
         );
         if (uploadResult.success) {
           data.image = uploadResult.url;
