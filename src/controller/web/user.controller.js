@@ -358,7 +358,7 @@ module.exports.resetPassword = async (req, res) => {
     if (!userData) {
       return res.status(404).json({
         _status: false,
-        _message: "User not found",
+        _message: "Account Not Found",
       });
     }
 

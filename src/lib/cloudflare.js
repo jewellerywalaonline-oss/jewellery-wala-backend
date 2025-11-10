@@ -51,11 +51,11 @@ const uploadToR2 = async (file, folder = "users", quality = 80) => {
     // Generate unique filename
     let fileBuffer;
     if (folder === "banner") {
-      fileBuffer = await optimizeImage(file.buffer, { quality: 80 });
+      fileBuffer = await optimizeImage(file.buffer, { quality: 85 });
     } else if (folder === "products") {
-      fileBuffer = await optimizeImage(file.buffer, { quality: quality || 75 });
+      fileBuffer = await optimizeImage(file.buffer, { quality: quality || 80 });
     } else {
-      fileBuffer = await optimizeImage(file.buffer, { quality: 70 });
+      fileBuffer = await optimizeImage(file.buffer, { quality: 80 });
     }
     let fileName = generateFileName(file.originalname, folder);
     let contentType = "image/webp";
@@ -67,13 +67,14 @@ const uploadToR2 = async (file, folder = "users", quality = 80) => {
       Key: fileName,
       Body: fileBuffer,
       ContentType: contentType,
+       CacheControl: "public, max-age=31536000, immutable",
       ACL: "public-read",
     });
 
     await s3Client.send(command);
 
     // Generate public URL (if public access is enabled) // slash is in env
-    const fileUrl = `${process.env.CLOUDFLARE_PUBLIC_URL}${fileName}`;
+    const fileUrl = `${"https://jewellerywalla.com/"}${fileName}`;
 
     return {
       success: true,
