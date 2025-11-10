@@ -74,7 +74,7 @@ const uploadToR2 = async (file, folder = "users", quality = 80) => {
     await s3Client.send(command);
 
     // Generate public URL (if public access is enabled) // slash is in env
-    const fileUrl = `${"https://jewellerywalla.com/"}${fileName}`;
+    const fileUrl = `${"https://cdn.jewellerywalla.com/"}${fileName}`;
 
     return {
       success: true,
