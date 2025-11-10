@@ -25,10 +25,10 @@ router.post("/get-by-filter", uploadNone, getProductByFilter);
 router.post("/get-by-search", uploadNone, getBySearch);
 router.post("/get-related-products", uploadNone, relatedProducts);
 // tab products
-router.post("/tab-products", uploadNone,  tabProducts);
-router.post("/new-arrivals", uploadNone, newArrivals);
-router.post("/trending-products", uploadNone, trendingProducts);
-router.post("/featured-for-footer", uploadNone, featuredForFooter);
+router.get("/tab-products", uploadNone,  tabProducts);
+router.get("/new-arrivals", uploadNone, newArrivals);
+router.get("/trending-products", uploadNone, trendingProducts);
+router.get("/featured-for-footer", uploadNone, featuredForFooter);
 
 // sitemap products
 router.post("/all", uploadNone, getAll);
