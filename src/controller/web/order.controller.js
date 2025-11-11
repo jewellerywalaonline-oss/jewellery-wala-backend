@@ -891,17 +891,25 @@ async function handleRefundProcessed(refundData) {
 
   if (order) {
     order.cancellation.refundStatus = "completed";
-    order.cancellation.refundProcessedAt = new Date();
+    order.cancellation.refundedAt = new Date();
     await order.save();
 
     // Send confirmation email
-    await sendEmail(
-      order.shippingAddress.email,
-      "Refund Processed",
-      `Your refund of ₹${refundData.amount / 100} for order ${
-        order.orderId
-      } has been processed successfully.`
-    );
+    await sendEmail(order.shippingAddress.email, "RefundProcessed", {
+      user: {
+        name: order.shippingAddress.name,
+        email: order.shippingAddress.email,
+      },
+      order: {
+        _id: order._id,
+        orderId: order.orderId,
+        createdAt: order.createdAt,
+        pricing: order.pricing,
+        cancellation: order.cancellation,
+        shippingAddress: order.shippingAddress,
+        pendingStatus: order.payment.status ? true : false,
+      },
+    });
   }
 }
 
@@ -925,6 +933,25 @@ async function handleRefundCreated(refundData) {
   if (order) {
     order.cancellation.refundStatus = "processing";
     await order.save();
+
+    sendEmail(order.shippingAddress.email, "orderCancelled", {
+      user: {
+        name: order.shippingAddress.name,
+        email: order.shippingAddress.email,
+      },
+      order: {
+        _id: order._id,
+        orderId: order.orderId,
+        createdAt: order.createdAt,
+        pricing: order.pricing,
+        cancellation: order.cancellation,
+        shippingAddress: order.shippingAddress,
+        pendingStatus: order.payment.status ? true : false,
+        paymentRefundStatus: order.cancellation.refundStatus,
+      },
+    }).catch((emailError) => {
+      console.error("Failed to send cancellation email:", emailError);
+    });
   }
 }
 //////////////////////////////////////////
@@ -1058,28 +1085,79 @@ exports.confirmCODOrder = async (req, res) => {
   }
 };
 
-// Optional: Get COD charges before order creation
-exports.getCODCharges = async (req, res) => {
+exports.cancelOrderByAdmin = async (req, res) => {
+  const { orderId, reason } = req.body;
   try {
-    const { total } = req.query;
-
-    // You can have dynamic COD charges based on order value
-    let codCharges = 50; // Base COD charge
-
-    if (parseFloat(total) > 1000) {
-      codCharges = 0; // Free COD for orders above ₹2000
+    const order = await Order.findOne({ orderId });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
     }
 
+    if (order.payment.status !== "pending") {
+      const refundAmount = order.pricing.total;
+
+      // Initiate refund with Razorpay
+      try {
+        const refund = await razorpay.payments.refund(
+          order.payment.razorpay.paymentId,
+          {
+            amount: refundAmount * 100,
+            speed: "normal",
+            notes: {
+              orderId: order.orderId,
+              reason,
+            },
+          }
+        );
+
+        // Update refund status if successful
+        order.cancellation.refundStatus = "initiated";
+        order.cancellation.refundId = refund.id;
+        order.cancellation.refundAmount = refundAmount;
+      } catch (error) {
+        console.error("Refund initiation failed:", error);
+        // Continue with cancellation even if refund fails
+        order.cancellation.refundStatus = "failed";
+        order.cancellation.refundError = error.message;
+      }
+    }
+    order.status = "cancelled";
+    order.cancellation.reason = reason;
+    order.cancellation.cancelledBy = "admin";
+    order.cancellation.cancelledAt = new Date();
+    await order.save();
     res.status(200).json({
       success: true,
-      codCharges,
-      message:
-        codCharges === 0 ? "Free COD available" : `COD charges: ₹${codCharges}`,
+      message: "Order cancelled successfully",
+    });
+
+    sendEmail(order.shippingAddress.email, "orderCancelled", {
+      user: {
+        name: order.shippingAddress.name,
+        email: order.shippingAddress.email,
+      },
+      order: {
+        _id: order._id,
+        orderId: order.orderId,
+        createdAt: order.createdAt,
+        pricing: order.pricing,
+        cancellation: order.cancellation,
+        shippingAddress: order.shippingAddress,
+        pendingStatus: order.payment.status ? true : false,
+        adminReason: reason,
+      },
+    }).catch((emailError) => {
+      console.error("Failed to send cancellation email:", emailError);
     });
   } catch (error) {
+    console.error("Cancel Order Error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to get COD charges",
+      message: "Failed to cancel order",
+      error: error.message,
     });
   }
 };

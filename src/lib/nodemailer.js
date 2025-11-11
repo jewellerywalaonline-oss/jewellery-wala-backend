@@ -67,6 +67,10 @@ const templates = {
     subject: `Your Delivery OTP - ${process.env.APP_NAME}`,
     template: "order-delivery-otp.ejs",
   },
+  refundProcessed: {
+    subject: `Refund Processed - ${process.env.APP_NAME}`,
+    template: "refund-processed.ejs",
+  },
 };
 
 // --- Render EJS template ---

@@ -13,6 +13,7 @@ const {
   getOrder,
   sendDeliveryOTP,
   confirmCODOrder,
+  cancelOrderByAdmin,
 } = require("../../controller/web/order.controller.js");
 const protect = require("../../middleware/authMiddleware.js"); // Your auth middleware
 const { uploadNone } = require("../../middleware/uploadMiddleware.js");
@@ -59,6 +60,8 @@ router.post(
 );
 
 router.post("/buy-with-cod", protect, uploadNone, confirmCODOrder);
+
+router.post("/cancel-by-admin", protect, uploadNone, cancelOrderByAdmin);
 
 router.post("/all", protect, uploadNone, getAllOrders);
 

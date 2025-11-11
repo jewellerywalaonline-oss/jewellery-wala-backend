@@ -1,10 +1,10 @@
 // admin panel login and user management
 const { generateToken } = require("../../lib/jwt");
 const userModel = require("../../models/user");
-const cartModel = require("../../models/cart");
-const order = require("../../models/order");
-const wishlistModel = require("../../models/wishlist");
-const reviewModel = require("../../models/review");
+const Cart = require("../../models/cart");
+const Order = require("../../models/order");
+const Wishlist = require("../../models/wishlist");
+const Reviews = require("../../models/review");
 
 // admin panel login
 exports.login = async (req, res) => {
@@ -47,7 +47,7 @@ exports.login = async (req, res) => {
 
 exports.findAllUser = async (req, res) => {
   try {
-    const users = await userModel.find({}).lean();
+    const users = await userModel.find({ deletedAt: null }).lean();
     return res.status(200).json({
       _status: true,
       _message: "Users found successfully",
@@ -66,10 +66,20 @@ exports.findAllUser = async (req, res) => {
 exports.getFullDetails = async (req, res) => {
   try {
     const user = await userModel.findById(req.params.id);
-    const cart = await cartModel.find({ user: req.params.id });
-    const orders = await order.find({ user: req.params.id });
-    const wishlist = await wishlistModel.find({ user: req.params.id });
-    const reviews = await reviewModel.find({ user: req.params.id });
+    const cart = await Cart.find({ user: req.params.id })
+      .populate("items.product", "name images image discount_price price slug")
+      .populate("items.color");
+    const orders = await Order.find({ userId: req.params.id })
+      .populate("items.productId", "name images slug")
+      .select("-payment.razorpay.signature");
+    const wishlist = await Wishlist.find({ user: req.params.id }).populate(
+      "products",
+      "name price discount_price images slug stock"
+    );
+    const reviews = await Reviews.find({ userId: req.params.id }).populate(
+      "productId",
+      "name images slug"
+    );
     return res.status(200).json({
       _status: true,
       _message: "User found successfully",
@@ -86,6 +96,7 @@ exports.getFullDetails = async (req, res) => {
       ...(process.env.NODE_ENV === "development" && {
         _error: error.message,
       }),
+      _error: error.message,
     });
   }
 };
