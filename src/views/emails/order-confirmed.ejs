@@ -1,143 +1,154 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Order Confirmed - Jewellery Walla</title>
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f9f9f9;
-        }
-        .header {
-            text-align: center;
-            padding: 20px 0;
-            border-bottom: 2px solid #e0e0e0;
-            margin-bottom: 30px;
-        }
-        .logo {
-            max-width: 200px;
-            margin-bottom: 20px;
-        }
-        .order-details {
-            background: #ffffff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 25px;
-        }
-        .otp-box {
-            background: #f8f4ff;
-            border-left: 4px solid #7c3aed;
-            padding: 15px;
-            margin: 20px 0;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .button {
-            display: inline-block;
-            padding: 12px 25px;
-            background-color: #7c3aed;
-            color: #ffffff !important;
-            text-decoration: none;
-            border-radius: 4px;
-            margin: 15px 0;
-            font-weight: bold;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-            font-size: 14px;
-            color: #666;
-        }
-        .order-items {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        .order-items th, .order-items td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .order-items th {
-            background-color: #f5f5f5;
-        }
+      body {
+        font-family: "Arial", sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f9f9f9;
+      }
+      .header {
+        text-align: center;
+        padding: 20px 0;
+        border-bottom: 2px solid #e0e0e0;
+        margin-bottom: 30px;
+      }
+      .logo {
+        max-width: 200px;
+        margin-bottom: 20px;
+      }
+      .order-details {
+        background: #ffffff;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 25px;
+      }
+      .otp-box {
+        background: #f8f4ff;
+        border-left: 4px solid #7c3aed;
+        padding: 15px;
+        margin: 20px 0;
+        font-size: 18px;
+        font-weight: bold;
+      }
+      .button {
+        display: inline-block;
+        padding: 12px 25px;
+        background-color: #7c3aed;
+        color: #ffffff !important;
+        text-decoration: none;
+        border-radius: 4px;
+        margin: 15px 0;
+        font-weight: bold;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e0e0e0;
+        font-size: 14px;
+        color: #666;
+      }
+      .order-items {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+      }
+      .order-items th,
+      .order-items td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+      }
+      .order-items th {
+        background-color: #f5f5f5;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="header">
-        
-        <h1>Your Order is Confirmed!</h1>
-        <p>Thank you for shopping with us. Here's your order confirmation.</p>
+      <h1>Your Order is Confirmed!</h1>
+      <p>Thank you for shopping with us. Here's your order confirmation.</p>
     </div>
 
     <div class="order-details">
-        <h2>Order #<%= orderId %></h2>
-        <p>Order Date: <%= new Date().toLocaleDateString() %></p>
-        
-        <h3>Order Summary</h3>
-        <table class="order-items">
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Quantity</th>
-                    <th>Price</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% items.forEach(item => { %>
-                <tr>
-                    <td><%= item.name %></td>
-                    <td><%= item.quantity %></td>
-                    <td>₹<%= item.discount_price || item.price %></td>
-                </tr>
-                <% }); %>
-            </tbody>
-        </table>
+      <h2>Order #<%= orderId %></h2>
+      <p>Order Date: <%= new Date().toLocaleDateString() %></p>
 
-        <div style="text-align: right; margin-top: 20px;">
-            <p><strong>Subtotal:</strong> ₹<%= subtotal %></p>
-            <% if (discount > 0) { %>
-                <p><strong>Discount:</strong> -₹<%= discount %></p>
-            <% } %>
-            <p><strong>Shipping:</strong> <%= shipping > 0 ? '₹' + shipping : 'FREE' %></p>
-            <p style="font-size: 1.2em; font-weight: bold; margin-top: 10px;">Total: ₹<%= total %></p>
-        </div>
+      <h3>Order Summary</h3>
+      <table class="order-items">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Quantity</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(item => { %>
+          <tr>
+            <td><%= item.name %></td>
+            <td><%= item.quantity %></td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
 
-        <h3>Delivery Information</h3>
+      <div style="text-align: right; margin-top: 20px">
+        <p><strong>Subtotal:</strong> ₹<%= subtotal %></p>
+        <% if (discount > 0) { %>
+        <p><strong>Discount:</strong> -₹<%= discount %></p>
+        <% } %>
         <p>
-            <strong><%= shippingAddress.name %></strong><br>
-            <%= shippingAddress.address %><br>
-            <%= shippingAddress.city %>, <%= shippingAddress.state %> - <%= shippingAddress.pincode %><br>
-            Phone: <%= shippingAddress.phone %>
+          <strong>Shipping:</strong> <%= shipping > 0 ? '₹' + shipping : 'FREE'
+          %>
         </p>
+        <p style="font-size: 1.2em; font-weight: bold; margin-top: 10px">
+          Total: ₹<%= total %>
+        </p>
+      </div>
 
-        <div style="text-align: right; margin-top: 20px;">
-            <p><strong>Package ID:</strong> <%= packageId %></p>
-            <p>Please Confirm It with The package Id written on Bill</p>
-        </div>
+      <h3>Delivery Information</h3>
+      <p>
+        <strong><%= shippingAddress.name %></strong><br />
+        <%= shippingAddress.address %><br />
+        <%= shippingAddress.city %>, <%= shippingAddress.state %> - <%=
+        shippingAddress.pincode %><br />
+        Phone: <%= shippingAddress.phone %>
+      </p>
 
-        <div class="otp-box">
-            <p>Please provide this OTP to the delivery agent to receive your order:</p>
-            <h2 style="text-align: center; letter-spacing: 5px; color: #7c3aed;"><%= deliveryOTP %></h2>
-        </div>
+      <div style="text-align: right; margin-top: 20px">
+        <p><strong>Package ID:</strong> <%= packageId %></p>
+        <p>Please Confirm It with The package Id written on Bill</p>
+      </div>
 
-        <p>We'll send you a notification when your order is out for delivery.</p>
-        
-      
+      <div class="otp-box">
+        <p>
+          Please provide this OTP to the delivery agent to receive your order:
+        </p>
+        <h2 style="text-align: center; letter-spacing: 5px; color: #7c3aed">
+          <%= deliveryOTP %>
+        </h2>
+      </div>
+
+      <p>We'll send you a notification when your order is out for delivery.</p>
     </div>
 
     <div class="footer">
-        <p>If you have any questions about your order, please contact our customer support at <a href="mailto:<%= contactEmail %>"><%= contactEmail %></a></p>
-        <p>© <%= new Date().getFullYear() %> Jewellry Wala. All rights reserved.</p>
+      <p>
+        If you have any questions about your order, please contact our customer
+        support at <a href="mailto:<%= contactEmail %>"><%= contactEmail %></a>
+      </p>
+      <p>
+        © <%= new Date().getFullYear() %> Jewellry Wala. All rights reserved.
+      </p>
     </div>
-</body>
+  </body>
 </html>
