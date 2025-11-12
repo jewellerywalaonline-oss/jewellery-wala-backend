@@ -246,8 +246,8 @@ exports.getProductByFilter = async (req, res) => {
 
 exports.getBySearch = async (req, res) => {
   try {
-    const { search } = req.body;
-
+    const { search, limit = 20 } = req.query;
+    const parsedLimit = parseInt(limit, 10) || 20;
     // Trim and validate search term
     if (!search || search.trim() === "") {
       return res.send({
@@ -284,7 +284,7 @@ exports.getBySearch = async (req, res) => {
         "name slug images price image stock discount_price colors material category subCategory subSubCategory"
       )
       .sort("-createdAt")
-      .limit(20)
+      .limit(parsedLimit)
       .lean();
 
     res.send({

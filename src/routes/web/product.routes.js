@@ -22,10 +22,10 @@ router.post(
   getByCategory
 );
 router.post("/get-by-filter", uploadNone, getProductByFilter);
-router.post("/get-by-search", uploadNone, getBySearch);
+router.get("/get-by-search", uploadNone, getBySearch);
 router.post("/get-related-products", uploadNone, relatedProducts);
 // tab products
-router.get("/tab-products", uploadNone,  tabProducts);
+router.get("/tab-products", uploadNone, tabProducts);
 router.get("/new-arrivals", uploadNone, newArrivals);
 router.get("/trending-products", uploadNone, trendingProducts);
 router.get("/featured-for-footer", uploadNone, featuredForFooter);
