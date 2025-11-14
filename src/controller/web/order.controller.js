@@ -125,7 +125,7 @@ exports.createOrder = async (req, res) => {
     //   // couponId = ...
     // }
 
-    const shipping = subtotal > 1000 ? 0 : 50; // Free shipping above ₹1000
+    const shipping = subtotal > 1000 ? 0 : 0; // Free shipping above ₹1000
     const giftWrapCharges = giftWrap ? 50 : 0;
     const total = subtotal - discount + shipping + giftWrapCharges;
 

@@ -222,6 +222,7 @@ exports.getProductByFilter = async (req, res) => {
       )
       .limit(limit)
       .skip(skip)
+      .sort({ createdAt: -1 })
       .lean();
 
     res.send({
@@ -283,7 +284,7 @@ exports.getBySearch = async (req, res) => {
       .select(
         "name slug images price image stock discount_price colors material category subCategory subSubCategory"
       )
-      .sort("-createdAt")
+      .sort({ createdAt: -1 })
       .limit(parsedLimit)
       .lean();
 
@@ -315,7 +316,7 @@ exports.getAll = async (req, res) => {
       .select(
         "name slug images price image stock discount_price colors material category subCategory subSubCategory"
       )
-      .sort("-createdAt")
+      .sort({ createdAt: -1 })
       .lean();
     res.send({
       _status: true,
@@ -353,6 +354,7 @@ exports.relatedProducts = async (req, res) => {
           "name slug images price image stock discount_price colors material category subCategory subSubCategory"
         )
         .populate("material", "name")
+        .sort({ createdAt: -1 })
         .lean();
     }
 
