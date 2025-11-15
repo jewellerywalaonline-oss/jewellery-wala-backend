@@ -6,7 +6,7 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please Enter A Name"],
       minlength: 3,
-      maxlength: 20,
+      
       match: /^[a-zA-Z 0-9"' ]+$/,
      
     },
