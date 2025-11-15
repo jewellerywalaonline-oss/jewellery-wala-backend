@@ -1,26 +1,21 @@
 const slugify = require("slugify");
 
-const generateUniqueSlug = async (model, text, count = 0) => {
-  const slug = count
-    ? `${slugify(text, {
-        lower: true,
-        remove: /[*+~.()'"!:@#$%^&{}[\]|\\/<>?,]/g,
-        strict: true,
-        locale: "en",
-      })}-${count}`
-    : slugify(text, {
-        lower: true,
-        remove: /[*+~.()'"!:@#$%^&{}[\]|\\/<>?,]/g,
-        strict: true,
-        locale: "en",
-      });
-  const exists = await model.findOne({ slug, deletedAt: null });
-  if (count > 3) {
-   return generateUniqueSlug(model, text, Date.now());
+const generateUniqueSlug = async (model, text) => {
+  let baseSlug = slugify(text, {
+    lower: true,
+    strict: true,
+    remove: /[*+~.()'"!:@#$%^&{}[\]|\\/<>?,]/g,
+    locale: "en",
+  });
+
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (await model.findOne({ slug, deletedAt: null })) {
+    slug = `${baseSlug}-${counter++}`;
   }
-  return exists ? generateUniqueSlug(model, text, count + 1) : slug;
+
+  return slug;
 };
 
-module.exports = {
-  generateUniqueSlug,
-};
+module.exports = { generateUniqueSlug };
