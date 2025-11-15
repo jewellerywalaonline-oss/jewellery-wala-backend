@@ -5,19 +5,10 @@ const productSchema = new mongoose.Schema(
     name: {
       type: String,
       required: [true, "Please Enter A Name"],
-      minlenght: 3,
-      maxlenght: 20,
+      minlength: 3,
+      maxlength: 20,
       match: /^[a-zA-Z 0-9"' ]+$/,
-      validate: {
-        validator: async function (name) {
-          const existingProduct = await this.constructor.findOne({
-            name,
-            deletedAt: null,
-          });
-          return !existingProduct;
-        },
-        message: "Name already exists",
-      },
+     
     },
     slug: {
       type: String,
@@ -66,7 +57,7 @@ const productSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "SubSubCategories",
-        required: [true, " Sub Sub Category is required"],
+       
       },
     ],
 
