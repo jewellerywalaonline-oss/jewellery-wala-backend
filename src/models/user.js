@@ -5,9 +5,6 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       required: [true, "Please Enter A Name"],
-      minlenght: 3,
-      maxlenght: 20,
-      match: /^[a-zA-Z 0-9"' ]{3,20}$/,
     },
     gender: {
       type: String,
@@ -15,27 +12,30 @@ const userSchema = new mongoose.Schema(
       enum: ["male", "female", "other"],
     },
     address: {
-      type: {
-        pincode: {
-          type: Number,
-        },
-        state: {
-          type: String,
-        },
-        city: {
-          type: String,
-        },
-        street: {
-          type: String,
-        },
-        area: {
-          type: String,
-        },
-        instructions: {
-          type: String,
-        },
+      pincode: {
+        type: Number,
+        default: null,
       },
-      default: {},
+      state: {
+        type: String,
+        default: "",
+      },
+      city: {
+        type: String,
+        default: "",
+      },
+      street: {
+        type: String,
+        default: "",
+      },
+      area: {
+        type: String,
+        default: "",
+      },
+      instructions: {
+        type: String,
+        default: "",
+      },
     },
 
     role: {
@@ -73,8 +73,9 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Password IS Required"],
-      minlenght: 6,
+      required: [true, "Password is required"],
+      minlength: [6, "Password must be at least 6 characters long"],
+      maxlength: [128, "Password must not exceed 128 characters"],
     },
     mobile: {
       type: Number,
@@ -93,7 +94,6 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: 0,
       max: 1000,
-      match: /^[0-9]+$/,
     },
     deletedAt: {
       type: Date,

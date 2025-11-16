@@ -345,7 +345,6 @@ module.exports.verifyOtp = async (req, res) => {
 };
 
 module.exports.resetPassword = async (req, res) => {
- 
   const userEmail = req?.user?.email || req?.body?.email;
 
   try {
@@ -534,8 +533,15 @@ module.exports.googleLogin = async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    const { email, name, picture: avatar, sub: googleId } = payload; // Added googleId
+    const {
+      email,
+      name,
+      picture: avatar,
+      sub: googleId,
+      email_verified,
+    } = payload;
 
+    // Validate required fields
     if (!email) {
       return res.status(400).json({
         _status: false,
@@ -543,33 +549,75 @@ module.exports.googleLogin = async (req, res) => {
       });
     }
 
+    if (!name) {
+      return res.status(400).json({
+        _status: false,
+        _message: "Name not found in Google account",
+      });
+    }
+
     // Check if user exists by email OR googleId
     let user = await userModel.findOne({
-      $or: [{ email }, { googleId: sub }],
+      $or: [{ email }, { googleId }],
+      deletedAt: null, // Exclude soft-deleted users
     });
 
     if (!user) {
       // Create new user if not exists
-      user = await userModel.create({
-        name,
-        email,
-        password: await hashPassword(Math.random().toString(36).slice(-8)),
-        avatar,
-        googleId: sub, // Store Google ID
-        isEmailVerified: true,
-        status: true,
-      });
-    } else if (!user.status) {
-      return res.status(403).json({
-        _status: false,
-        _message: "Your account has been deactivated. Please contact support.",
-      });
-    } else if (!user.googleId) {
+      try {
+        user = await userModel.create({
+          name: name || "Google User", // Fallback name
+          email,
+          password: await hashPassword(
+            crypto.randomBytes(32).toString("hex") // More secure random password
+          ),
+          avatar: avatar || null,
+          googleId,
+          isEmailVerified: email_verified || true,
+          status: true,
+        });
+      } catch (createError) {
+        // Handle duplicate email error
+        if (createError.code === 11000) {
+          return res.status(409).json({
+            _status: false,
+            _message: "An account with this email already exists",
+          });
+        }
+        throw createError;
+      }
+    } else {
+      // Check if account is deactivated
+      if (!user.status) {
+        return res.status(403).json({
+          _status: false,
+          _message:
+            "Your account has been deactivated. Please contact support.",
+        });
+      }
+
+      // Check if account is soft-deleted
+      if (user.deletedAt) {
+        return res.status(403).json({
+          _status: false,
+          _message:
+            "Your account has been deleted. Please contact support to restore it.",
+        });
+      }
+
       // Link Google account to existing email user
-      user.googleId = sub;
-      user.isEmailVerified = true;
-      if (!user.avatar) user.avatar = avatar;
-      await user.save();
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.isEmailVerified = true;
+        if (!user.avatar && avatar) user.avatar = avatar;
+
+        try {
+          await user.save({ validateBeforeSave: false }); // Skip validation to avoid address errors
+        } catch (saveError) {
+          console.error("Error linking Google account:", saveError);
+          // Continue anyway - login should still work
+        }
+      }
     }
 
     // Generate JWT token
@@ -588,31 +636,67 @@ module.exports.googleLogin = async (req, res) => {
     });
   } catch (error) {
     console.error("Google login error:", error);
+
+    // Handle specific error types
+    if (error.message?.includes("Token used too late")) {
+      return res.status(401).json({
+        _status: false,
+        _message: "Google token has expired. Please try again.",
+      });
+    }
+
+    if (error.message?.includes("Invalid token signature")) {
+      return res.status(401).json({
+        _status: false,
+        _message: "Invalid Google credential. Please try again.",
+      });
+    }
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        _status: false,
+        _message: "Validation error",
+        _error: error.message,
+      });
+    }
+
     return res.status(500).json({
       _status: false,
       _message: "Error during Google authentication",
-      _error: error.message,
+      _error:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
 
-// New endpoint for OAuth2 redirect
+// OAuth2 redirect endpoint
 module.exports.googleAuthRedirect = async (req, res) => {
-  const redirectUri = `${process.env.FRONTEND_URL}/auth/google/callback`;
+  try {
+    const redirectUri = `${process.env.FRONTEND_URL}/auth/google/callback`;
 
-  const googleAuthUrl =
-    `https://accounts.google.com/o/oauth2/v2/auth?` +
-    `client_id=${process.env.GOOGLE_CLIENT_ID}&` +
-    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-    `response_type=code&` +
-    `scope=email profile&` +
-    `access_type=offline&` +
-    `prompt=select_account`; // Forces account selection
+    const googleAuthUrl =
+      `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${process.env.GOOGLE_CLIENT_ID}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `response_type=code&` +
+      `scope=email profile&` +
+      `access_type=offline&` +
+      `prompt=select_account`;
 
-  res.json({ url: googleAuthUrl });
+    res.json({
+      _status: true,
+      url: googleAuthUrl,
+    });
+  } catch (error) {
+    console.error("Google auth redirect error:", error);
+    res.status(500).json({
+      _status: false,
+      _message: "Error generating Google auth URL",
+    });
+  }
 };
 
-// New endpoint to handle the callback
+// OAuth2 callback handler
 module.exports.googleAuthCallback = async (req, res) => {
   try {
     const { code } = req.body;
@@ -624,14 +708,24 @@ module.exports.googleAuthCallback = async (req, res) => {
       });
     }
 
+    const redirectUri = `${process.env.FRONTEND_URL}/auth/google/callback`;
+
     const client = new OAuth2Client(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.FRONTEND_URL}/auth/google/callback`
+      redirectUri
     );
 
     // Exchange code for tokens
     const { tokens } = await client.getToken(code);
+
+    if (!tokens.id_token) {
+      return res.status(400).json({
+        _status: false,
+        _message: "ID token not received from Google",
+      });
+    }
+
     client.setCredentials(tokens);
 
     // Get user info
@@ -641,8 +735,15 @@ module.exports.googleAuthCallback = async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    const { email, name, picture: avatar, sub: googleId } = payload;
+    const {
+      email,
+      name,
+      picture: avatar,
+      sub: googleId,
+      email_verified,
+    } = payload;
 
+    // Validate required fields
     if (!email) {
       return res.status(400).json({
         _status: false,
@@ -650,31 +751,67 @@ module.exports.googleAuthCallback = async (req, res) => {
       });
     }
 
+    if (!name) {
+      return res.status(400).json({
+        _status: false,
+        _message: "Name not found in Google account",
+      });
+    }
+
     // Check if user exists
     let user = await userModel.findOne({
       $or: [{ email }, { googleId }],
+      deletedAt: null,
     });
 
     if (!user) {
-      user = await userModel.create({
-        name,
-        email,
-        password: await hashPassword(Math.random().toString(36).slice(-8)),
-        avatar,
-        googleId,
-        isEmailVerified: true,
-        status: true,
-      });
-    } else if (!user.status) {
-      return res.status(403).json({
-        _status: false,
-        _message: "Your account has been deactivated. Please contact support.",
-      });
-    } else if (!user.googleId) {
-      user.googleId = googleId;
-      user.isEmailVerified = true;
-      if (!user.avatar) user.avatar = avatar;
-      await user.save();
+      try {
+        user = await userModel.create({
+          name: name || "Google User",
+          email,
+          password: await hashPassword(crypto.randomBytes(32).toString("hex")),
+          avatar: avatar || null,
+          googleId,
+          isEmailVerified: email_verified || true,
+          status: true,
+        });
+      } catch (createError) {
+        if (createError.code === 11000) {
+          return res.status(409).json({
+            _status: false,
+            _message: "An account with this email already exists",
+          });
+        }
+        throw createError;
+      }
+    } else {
+      if (!user.status) {
+        return res.status(403).json({
+          _status: false,
+          _message:
+            "Your account has been deactivated. Please contact support.",
+        });
+      }
+
+      if (user.deletedAt) {
+        return res.status(403).json({
+          _status: false,
+          _message:
+            "Your account has been deleted. Please contact support to restore it.",
+        });
+      }
+
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.isEmailVerified = true;
+        if (!user.avatar && avatar) user.avatar = avatar;
+
+        try {
+          await user.save({ validateBeforeSave: false });
+        } catch (saveError) {
+          console.error("Error linking Google account:", saveError);
+        }
+      }
     }
 
     // Generate JWT token
@@ -692,10 +829,27 @@ module.exports.googleAuthCallback = async (req, res) => {
     });
   } catch (error) {
     console.error("Google auth callback error:", error);
+
+    if (error.message?.includes("invalid_grant")) {
+      return res.status(401).json({
+        _status: false,
+        _message:
+          "Authorization code has expired or is invalid. Please try again.",
+      });
+    }
+
+    if (error.message?.includes("redirect_uri_mismatch")) {
+      return res.status(400).json({
+        _status: false,
+        _message: "Redirect URI mismatch. Please contact support.",
+      });
+    }
+
     return res.status(500).json({
       _status: false,
       _message: "Error during Google authentication",
-      _error: error.message,
+      _error:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };

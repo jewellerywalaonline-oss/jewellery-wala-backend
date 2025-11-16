@@ -176,21 +176,34 @@ exports.changeRole = async (req, res) => {
 
 exports.userDelete = async (req, res) => {
   try {
-    const user = await userModel.findById(req.params.id);
+    const userId = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        _status: false,
+        _message: "Invalid user ID format",
+      });
+    }
+
+    // Find user first to get their data
+    const user = await userModel.findById(userId);
+
     if (!user) {
       return res.status(404).json({
         _status: false,
         _message: "User not found",
       });
     }
-    user.deletedAt = new Date();
-    await user.save();
+
+    // Permanently delete user from database
+    await userModel.findByIdAndDelete(userId);
+
     return res.status(200).json({
       _status: true,
-      _message: "User deleted successfully",
+      _message: "User permanently deleted successfully",
     });
   } catch (error) {
-    console.error("Error in userDelete:", error);
+    console.error("Error in userDeletePermanent:", error);
     res.status(500).json({
       _status: false,
       _message: "Error deleting user",

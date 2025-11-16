@@ -2,13 +2,13 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const compression = require("compression");
+
 require("dotenv").config();
 const app = express();
 
 // parse requests of content-type - application/json
 app.use((req, res, next) => {
-  if (req.originalUrl === "/api/orders/webhook") {
+  if (req.originalUrl === "/api/website/orders/webhook/razorpay") {
     next(); // Skip JSON parsing for webhook
   } else {
     express.json()(req, res, next);
