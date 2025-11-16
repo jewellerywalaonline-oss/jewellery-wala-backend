@@ -74,7 +74,7 @@ exports.createOrder = async (req, res) => {
           personalizedName: cartItem.isPersonalized
             ? cartItem.personalizedName
             : null,
-          priceAtPurchase: product.price,
+          priceAtPurchase: product.discount_price || product.price,
           subtotal: itemSubtotal,
           addedFrom: "cart",
           images: product.images,
@@ -474,6 +474,7 @@ exports.getOrderById = async (req, res) => {
     const order = await Order.findOne({ orderId, userId })
       .populate("items.productId", "name images slug")
       .select("-payment.razorpay.signature")
+      .populate("items.colorId", "name code")
       .lean();
 
     if (!order) {
@@ -503,6 +504,7 @@ exports.getOrder = async (req, res) => {
 
     const order = await Order.findOne({ orderId })
       .populate("items.productId", "name images slug")
+      .populate("items.colorId", "name code")
       .select("-payment.razorpay.signature")
       .lean();
 

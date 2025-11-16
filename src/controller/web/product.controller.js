@@ -343,6 +343,8 @@ exports.relatedProducts = async (req, res) => {
     // First priority: Find products matching subSubCategory IDs
     if (subSubCategoryIds && subSubCategoryIds.length > 0) {
       products = await Product.find({
+        deletedAt: null,
+        status: true,
         subSubCategory: { $in: subSubCategoryIds },
       })
         .limit(10)
