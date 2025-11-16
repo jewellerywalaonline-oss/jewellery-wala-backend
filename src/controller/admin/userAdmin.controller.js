@@ -178,12 +178,7 @@ exports.userDelete = async (req, res) => {
   try {
     const userId = req.params.id;
 
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({
-        _status: false,
-        _message: "Invalid user ID format",
-      });
-    }
+
 
     // Find user first to get their data
     const user = await userModel.findById(userId);
