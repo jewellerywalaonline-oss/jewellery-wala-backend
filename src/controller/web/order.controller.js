@@ -542,6 +542,10 @@ exports.cancelOrder = async (req, res) => {
         message: "Order not found",
       });
     }
+    // const payment = await razorpay.payments.fetch(
+    //   order.payment.razorpay.paymentId
+    // );
+    // console.log(  payment);
 
     // Check if order is within 1 day (24 hours) of creation
     const orderCreatedAt = new Date(order.createdAt);
@@ -577,7 +581,6 @@ exports.cancelOrder = async (req, res) => {
           order.payment.razorpay.paymentId,
           {
             amount: refundAmount * 100,
-            speed: "normal",
             notes: {
               orderId: order.orderId,
               reason,
@@ -929,7 +932,7 @@ async function handleRefundCreated(refundData) {
   const order = await Order.findOne({
     "cancellation.refundId": refundData.id,
   });
-
+  console.log("webhook called");
   if (order) {
     order.cancellation.refundStatus = "processing";
     await order.save();
@@ -946,7 +949,7 @@ async function handleRefundCreated(refundData) {
         pricing: order.pricing,
         cancellation: order.cancellation,
         shippingAddress: order.shippingAddress,
-        pendingStatus: order.payment.status ? true : false,
+        pendingStatus: true,
         paymentRefundStatus: order.cancellation.refundStatus,
       },
     }).catch((emailError) => {
@@ -1105,7 +1108,6 @@ exports.cancelOrderByAdmin = async (req, res) => {
           order.payment.razorpay.paymentId,
           {
             amount: refundAmount * 100,
-            speed: "normal",
             notes: {
               orderId: order.orderId,
               reason,
