@@ -14,23 +14,23 @@ const fetchRazorpayRefundStatus = async (paymentId, refundId) => {
     if (!paymentId) {
       return { error: "Payment ID not found" };
     }
-
+console.log("paymentId", paymentId ,"refundId", refundId);
     // If refundId is provided, fetch specific refund
     if (refundId) {
-      const refund = await razorpay.payments.fetchRefund(paymentId, refundId);
+      const refund = await razorpay.refunds.fetch(refundId);
       return {
-        status: refund.status, // processed, failed, pending
-        amount: refund.amount / 100, // Convert paise to rupees
+        status: refund.status,
+        amount: refund.amount / 100,
         id: refund.id,
         created_at: refund.created_at,
         error: null
       };
     }
+    console.log("refunds", refund);
+    // Fetch all refunds for this payment
+    const refunds = await razorpay.refunds.all({ payment_id: paymentId });
 
-    // If no refundId, fetch all refunds for the payment
-    const refunds = await razorpay.payments.fetchMultipleRefund(paymentId);
-    if (refunds.items && refunds.items.length > 0) {
-      // Get the most recent refund
+    if (refunds.items.length > 0) {
       const latestRefund = refunds.items[0];
       return {
         status: latestRefund.status,
@@ -45,11 +45,12 @@ const fetchRazorpayRefundStatus = async (paymentId, refundId) => {
 
   } catch (error) {
     console.error("Razorpay refund fetch error:", error);
-    return { 
-      error: error.error?.description || error.message || "Failed to fetch from Razorpay" 
+    return {
+      error: error.error?.description || error.message || "Failed to fetch from Razorpay"
     };
   }
 };
+
 
 // Get all refunded orders for admin
 exports.getRefundedOrdersForAdmin = async (req, res) => {
