@@ -63,6 +63,7 @@ const adminProductRoutes = require("./src/routes/admin/adminProduct.routes");
 const adminReviewRoutes = require("./src/routes/admin/adminReview.routes");
 const adminWhyChooseUsRoutes = require("./src/routes/admin/adminWhyChooseUs.routes");
 const dashboardRoutes = require("./src/routes/admin/dashboard.routes");
+const adminOrderRoutes = require("./src/routes/admin/adminOrder.routes");
 // website routes
 app.use("/api/website/logo", logoRoutes);
 app.use("/api/website/banner", bannerRoutes);
@@ -95,7 +96,7 @@ app.use("/api/admin/testimonial", adminTestimonialRoutes);
 app.use("/api/admin/review", adminReviewRoutes);
 app.use("/api/admin/whyChooseUs", adminWhyChooseUsRoutes);
 app.use("/api/admin/dashboard", dashboardRoutes);
-
+app.use("/api/admin/orders", adminOrderRoutes);
 // api routes
 app.get("/", (req, res) => {
   res.send("server started");

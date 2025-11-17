@@ -143,6 +143,8 @@ exports.getRecentActivity = async (req, res) => {
   }
 };
 
+
+
 // Export both functions as methods of the dashboard object
 const dashboard = {
   getDashboardStats: exports.getDashboardStats,
