@@ -5,6 +5,7 @@ const Product = require("../../models/product.js");
 const Cart = require("../../models/cart.js");
 const { sendEmail } = require("../../lib/nodemailer");
 const userModel = require("../../models/user.js");
+const coupenModel = require("../../models/coupen.js");
 require("dotenv").config();
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -119,13 +120,22 @@ exports.createOrder = async (req, res) => {
     let discount = 0;
     let couponId = null;
 
-    // if (couponCode) {
-    //   // Validate and apply coupon
-    //   // discount = ...
-    //   // couponId = ...
-    // }
+    if (couponCode) {
+      const coupon = await coupenModel.findOne({ code: couponCode });
 
-    const shipping = subtotal > 1000 ? 0 : 0; // Free shipping above ₹1000
+      if (coupon) {
+        // Percentage discount
+        const percentageDiscount = (subtotal * coupon.discountPercentage) / 100;
+
+        // Apply maxAmount cap
+        discount = Math.min(percentageDiscount, coupon.maxAmount);
+
+        // Set couponId
+        couponId = coupon._id;
+      }
+    }
+
+    const shipping = subtotal > 1000 ? 0 : 50; // Free shipping above ₹1000
     const giftWrapCharges = giftWrap ? 50 : 0;
     const total = subtotal - discount + shipping + giftWrapCharges;
 
@@ -361,6 +371,26 @@ exports.verifyPayment = async (req, res) => {
     // Handle post-response operations asynchronously
     setImmediate(async () => {
       try {
+        if (order.pricing.discount?.couponId) {
+          await coupenModel.updateMany({
+            userId: order.userId,
+          }, {
+            $set: {
+              isUsed: true,
+              usedAt: new Date(),
+              status: false,
+              deletedAt: new Date(),
+            },
+          });
+          await generateCoupen({
+            name: "ORDER50",
+            description: "50% off upto ₹200 On this Order ",
+            discountPercentage: 50,
+            minAmount: 10,
+            maxAmount: 200,
+            userId,
+          });
+        } 
         // Reduce stock for each item
         const stockUpdatePromises = order.items.map((item) =>
           Product.findByIdAndUpdate(item.productId, {
@@ -845,6 +875,30 @@ exports.getAllOrders = async (req, res) => {
       message: "Failed to fetch orders",
       error: error.message,
     });
+  }
+};
+
+const generateCoupen = async ({
+  name,
+  description,
+  discountPercentage,
+  minAmount,
+  maxAmount,
+  userId,
+}) => {
+  try {
+    const coupen = await coupenModel.create({
+      name: name.toUpperCase(),
+      code: name.toLowerCase(),
+      description,
+      discountPercentage,
+      minAmount,
+      maxAmount,
+      userId,
+    });
+  } catch (error) {
+    console.error("Generate Coupen Error:", error);
+    return null;
   }
 };
 

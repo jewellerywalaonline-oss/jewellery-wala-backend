@@ -19,7 +19,6 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "users",
       required: true,
-      // index: true,
     },
 
     // Purchase type: 'cart' or 'direct'
@@ -108,7 +107,7 @@ const orderSchema = new mongoose.Schema(
         couponCode: String,
         couponId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "coupons",
+          ref: "Coupens",
         },
       },
 

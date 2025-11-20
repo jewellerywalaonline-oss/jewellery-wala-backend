@@ -48,6 +48,7 @@ const webMaterialRoutes = require("./src/routes/web/material.routes");
 const orderRoutes = require("./src/routes/web/order.routes");
 const contactRoutes = require("./src/routes/web/contact.routes");
 const suggestionRoutes = require("./src/routes/web/suggestion.routes");
+const coupenRoutes = require("./src/routes/web/coupen.routes");
 // admin routes variables
 const materialRoutes = require("./src/routes/admin/material.routes");
 const colorRoutes = require("./src/routes/admin/color.routes");
@@ -81,6 +82,7 @@ app.use("/api/website/material", webMaterialRoutes);
 app.use("/api/website/orders", orderRoutes);
 app.use("/api/website/contact", contactRoutes);
 app.use("/api/website/result", suggestionRoutes);
+app.use("/api/website/coupen", coupenRoutes);
 // admin routes
 app.use("/api/admin/logo", adminLogoRoutes);
 app.use("/api/admin/banner", adminBannerRoutes);
