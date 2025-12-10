@@ -100,15 +100,14 @@ const orderSchema = new mongoose.Schema(
         type: Number,
         required: true,
       },
-
+      advance :{
+        type : Number,
+        default : 0
+      },
       // Discount applied
       discount: {
         amount: { type: Number, default: 0 },
-        couponCode: String,
-        couponId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Coupens",
-        },
+       
       },
 
       // Shipping charges
@@ -168,6 +167,7 @@ const orderSchema = new mongoose.Schema(
         enum: [
           "pending",
           "processing",
+          "cod-advance",
           "completed",
           "failed",
           "refunded",
@@ -184,6 +184,11 @@ const orderSchema = new mongoose.Schema(
       },
       // Verification flag
       verified: {
+        type: Boolean,
+        default: false,
+      },
+      //cod advance flag
+      codAdvance: {
         type: Boolean,
         default: false,
       },
@@ -206,6 +211,7 @@ const orderSchema = new mongoose.Schema(
         "confirmed", // Payment successful
         "processing", // Being prepared
         "shipped", // Dispatched
+        "cod-advance",
         // "out_for_delivery", // Out for delivery
         "delivered", // Successfully delivered
         "cancelled", // Cancelled by user/admin
@@ -282,7 +288,7 @@ const orderSchema = new mongoose.Schema(
     // Cancellation/Return details
     cancellation: {
       reason: String,
-      refundId : String,
+      refundId: String,
       cancelledBy: {
         type: String,
         enum: ["customer", "admin", "system"],
@@ -294,10 +300,8 @@ const orderSchema = new mongoose.Schema(
       },
       refundAmount: Number,
       refundedAt: Date,
-      refundError : String,
+      refundError: String,
     },
-
-  
   },
   {
     timestamps: true, // Adds createdAt and updatedAt

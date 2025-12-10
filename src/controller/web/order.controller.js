@@ -30,14 +30,14 @@ exports.createOrder = async (req, res) => {
       purchaseType, // 'cart' or 'direct'
       items,
       isPersonalizedName,
-      // For direct purchase: [{ productId, colorId, quantity, isPersonalized, personalizedName }]
+
       shippingAddress,
       billingAddress,
       notes,
       isGift,
       giftMessage,
       giftWrap,
-      couponCode,
+      isCodAdvance,
     } = req.body;
 
     const userId = req.user._id; // From auth middleware
@@ -117,23 +117,12 @@ exports.createOrder = async (req, res) => {
     }
 
     // Calculate pricing
-    let discount = 0;
+    let discount = isCodAdvance
+      ? 0
+      : subtotal < 500
+      ? 0
+      : Math.round(subtotal * 0.05);
     let couponId = null;
-
-    if (couponCode) {
-      const coupon = await coupenModel.findOne({ code: couponCode });
-
-      if (coupon) {
-        // Percentage discount
-        const percentageDiscount = (subtotal * coupon.discountPercentage) / 100;
-
-        // Apply maxAmount cap
-        discount = Math.min(percentageDiscount, coupon.maxAmount);
-
-        // Set couponId
-        couponId = coupon._id;
-      }
-    }
 
     const shipping = subtotal > 1000 ? 0 : 50; // Free shipping above ₹1000
     const giftWrapCharges = giftWrap ? 50 : 0;
@@ -146,9 +135,10 @@ exports.createOrder = async (req, res) => {
       items: orderItems,
       pricing: {
         subtotal,
+        advance: isCodAdvance ? 100 : 0,
         discount: {
           amount: discount,
-          couponCode: couponCode || null,
+          couponCode: null,
           couponId,
         },
         shipping,
@@ -223,7 +213,7 @@ exports.createOrder = async (req, res) => {
 // 2. Create Razorpay Order
 exports.createRazorpayOrder = async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const { orderId, isCodAdvance } = req.body;
     const userId = req.user._id;
 
     // Find order
@@ -243,16 +233,22 @@ exports.createRazorpayOrder = async (req, res) => {
         message: "Order is not in pending state",
       });
     }
-    // Create Razorpay order
-    const razorpayOrder = await razorpay.orders.create({
-      amount: order.pricing.total * 100, // Amount in paise
+    // 5% discount on full purchase and 100 in advance for cod
+    let options = {
+      amount: isCodAdvance ? 100 * 100 : order.pricing.total * 100,
       currency: "INR",
       receipt: order.orderId,
       notes: {
         orderId: order.orderId,
         userId: userId.toString(),
       },
-    });
+    };
+    if(isCodAdvance){
+      order.pricing.advance = 100
+      order.payment.codAdvance = true
+    }
+    // Create Razorpay order
+    const razorpayOrder = await razorpay.orders.create(options);
     // Update order with Razorpay order ID
     order.payment.razorpay.orderId = razorpayOrder.id;
     await order.save();
@@ -260,7 +256,7 @@ exports.createRazorpayOrder = async (req, res) => {
     res.status(200).json({
       success: true,
       razorpayOrderId: razorpayOrder.id,
-      amount: order.pricing.total,
+      amount: isCodAdvance ? 100 : order.pricing.total,
       currency: "INR",
       keyId: process.env.RAZORPAY_KEY_ID,
     });
@@ -330,7 +326,11 @@ exports.verifyPayment = async (req, res) => {
     const razorpayOrderDetails = await razorpay.orders.fetch(razorpay_order_id);
     const expectedAmount = order.pricing.total * 100; // Amount in paise
 
-    if (razorpayOrderDetails.amount !== expectedAmount) {
+    // online order payment
+    if (
+      !order.payment.codAdvance &&
+      razorpayOrderDetails.amount !== expectedAmount
+    ) {
       return res.status(400).json({
         success: false,
         message: "Amount mismatch",
@@ -339,7 +339,7 @@ exports.verifyPayment = async (req, res) => {
 
     // Payment successful - Update order status first
     order.status = "confirmed";
-    order.payment.status = "completed";
+    order.payment.status = !order.payment.codAdvance ? "completed" : "cod-advance";
     order.payment.verified = true;
     order.payment.razorpay.paymentId = razorpay_payment_id;
     order.payment.razorpay.signature = razorpay_signature;
@@ -371,26 +371,6 @@ exports.verifyPayment = async (req, res) => {
     // Handle post-response operations asynchronously
     setImmediate(async () => {
       try {
-        if (order.pricing.discount?.couponId) {
-          await coupenModel.updateMany({
-            userId: order.userId,
-          }, {
-            $set: {
-              isUsed: true,
-              usedAt: new Date(),
-              status: false,
-              deletedAt: new Date(),
-            },
-          });
-          await generateCoupen({
-            name: "ORDER50",
-            description: "50% off upto ₹200 On this Order ",
-            discountPercentage: 50,
-            minAmount: 10,
-            maxAmount: 200,
-            userId,
-          });
-        } 
         // Reduce stock for each item
         const stockUpdatePromises = order.items.map((item) =>
           Product.findByIdAndUpdate(item.productId, {
@@ -875,30 +855,6 @@ exports.getAllOrders = async (req, res) => {
       message: "Failed to fetch orders",
       error: error.message,
     });
-  }
-};
-
-const generateCoupen = async ({
-  name,
-  description,
-  discountPercentage,
-  minAmount,
-  maxAmount,
-  userId,
-}) => {
-  try {
-    const coupen = await coupenModel.create({
-      name: name.toUpperCase(),
-      code: name.toLowerCase(),
-      description,
-      discountPercentage,
-      minAmount,
-      maxAmount,
-      userId,
-    });
-  } catch (error) {
-    console.error("Generate Coupen Error:", error);
-    return null;
   }
 };
 
