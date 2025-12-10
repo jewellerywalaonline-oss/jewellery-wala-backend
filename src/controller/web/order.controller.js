@@ -243,9 +243,9 @@ exports.createRazorpayOrder = async (req, res) => {
         userId: userId.toString(),
       },
     };
-    if(isCodAdvance){
-      order.pricing.advance = 100
-      order.payment.codAdvance = true
+    if (isCodAdvance) {
+      order.pricing.advance = 100;
+      order.payment.codAdvance = true;
     }
     // Create Razorpay order
     const razorpayOrder = await razorpay.orders.create(options);
@@ -339,7 +339,9 @@ exports.verifyPayment = async (req, res) => {
 
     // Payment successful - Update order status first
     order.status = "confirmed";
-    order.payment.status = !order.payment.codAdvance ? "completed" : "cod-advance";
+    order.payment.status = !order.payment.codAdvance
+      ? "completed"
+      : "cod-advance";
     order.payment.verified = true;
     order.payment.razorpay.paymentId = razorpay_payment_id;
     order.payment.razorpay.signature = razorpay_signature;
@@ -585,7 +587,9 @@ exports.cancelOrder = async (req, res) => {
 
     // Handle refund only if payment was completed
     if (order.payment.status !== "pending") {
-      const refundAmount = order.pricing.total;
+      const refundAmount = order.payment.codAdvance
+        ? order.pricing.advance
+        : order.pricing.total;
 
       // Initiate refund with Razorpay
       try {
