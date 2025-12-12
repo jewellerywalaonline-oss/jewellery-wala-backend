@@ -5,6 +5,7 @@ const Cart = require("../../models/cart");
 const Order = require("../../models/order");
 const Wishlist = require("../../models/wishlist");
 const Reviews = require("../../models/review");
+const { comparePassword } = require("../../lib/bcrypt");
 
 // admin panel login
 exports.login = async (req, res) => {
@@ -117,6 +118,15 @@ exports.delieveryLogin = async (req, res) => {
         _message: "Delivery Account not found",
       });
     }
+
+    const isMatch = await comparePassword(password, user.password);
+    if (!isMatch) {
+      return res.status(200).json({
+        _status: false,
+        _message: "Password Doesnt Match ",
+      });
+    }
+
     const token = generateToken(user);
     return res.status(200).json({
       _status: true,
@@ -177,8 +187,6 @@ exports.changeRole = async (req, res) => {
 exports.userDelete = async (req, res) => {
   try {
     const userId = req.params.id;
-
-
 
     // Find user first to get their data
     const user = await userModel.findById(userId);
