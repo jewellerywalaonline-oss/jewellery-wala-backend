@@ -29,6 +29,14 @@ exports.login = async (req, res) => {
         _message: "Admin not found",
       });
     }
+
+    const isMatch = await comparePassword(password, user.password);
+    if (!isMatch) {
+      return res.status(200).json({
+        _status: false,
+        _message: "Password Doesnt Match ",
+      });
+    }
     const token = generateToken(user);
     return res.status(200).json({
       _status: true,
