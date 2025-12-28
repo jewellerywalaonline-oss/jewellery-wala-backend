@@ -7,7 +7,7 @@ const sizeSchema = new mongoose.Schema(
       required: [true, "Please Enter A Name"],
       minlenght: 3,
       maxlenght: 20,
-      match: /^[a-zA-Z 0-9 ]+$/,
+     
       validate: {
         validator: async function (name) {
           const existingSize = await this.constructor.findOne({
