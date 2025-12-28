@@ -43,6 +43,12 @@ const orderSchema = new mongoose.Schema(
           ref: "colors",
           required: true,
         },
+        // Size ID (optional - not all products have sizes)
+        sizeId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "sizes",
+          default: null,
+        },
         name: {
           type: String,
           required: true,
@@ -100,14 +106,13 @@ const orderSchema = new mongoose.Schema(
         type: Number,
         required: true,
       },
-      advance :{
-        type : Number,
-        default : 0
+      advance: {
+        type: Number,
+        default: 0,
       },
       // Discount applied
       discount: {
         amount: { type: Number, default: 0 },
-       
       },
 
       // Shipping charges

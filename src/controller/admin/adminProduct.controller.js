@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Category = require("../../models/category");
 const SubCategory = require("../../models/subCategory");
 const SubSubCategory = require("../../models/subSubCategory");
+const Size = require("../../models/size");
 const { uploadToR2, deleteFromR2 } = require("../../lib/cloudflare");
 const { generateUniqueSlug } = require("../../lib/slugFunc");
 const cache = require("../../lib/cache");
@@ -83,6 +84,18 @@ exports.create = async (request, response) => {
         const subSubCategoryExists = await SubSubCategory.findById(subSubCatId);
         if (!subSubCategoryExists) {
           throw new Error(`SubSubCategory with ID ${subSubCatId} not found`);
+        }
+      }
+    }
+
+    // Validate sizes exist (handle both single and multiple)
+    if (data.sizes) {
+      const sizeIds = Array.isArray(data.sizes) ? data.sizes : [data.sizes];
+
+      for (const sizeId of sizeIds) {
+        const sizeExists = await Size.findById(sizeId);
+        if (!sizeExists) {
+          throw new Error(`Size with ID ${sizeId} not found`);
         }
       }
     }
@@ -208,7 +221,8 @@ exports.getOne = async (request, response) => {
         .populate("material", "name ")
         .populate("category", "name slug")
         .populate("subCategory", "name slug")
-        .populate("subSubCategory", "name slug");
+        .populate("subSubCategory", "name slug")
+        .populate("sizes", "name");
     } else {
       // Find by slug
       product = await Product.findOne({ slug: slug })
@@ -216,7 +230,8 @@ exports.getOne = async (request, response) => {
         .populate("material", "name ")
         .populate("category", "name slug")
         .populate("subCategory", "name slug")
-        .populate("subSubCategory", "name slug");
+        .populate("subSubCategory", "name slug")
+        .populate("sizes", "name");
     }
 
     if (!product) {
@@ -375,6 +390,33 @@ exports.update = async (request, response) => {
       }
     }
 
+    // Validate sizes if changed (handle both single and multiple)
+    if (updateData.sizes) {
+      const sizeIds = Array.isArray(updateData.sizes)
+        ? updateData.sizes
+        : [updateData.sizes];
+
+      // Check if sizes have changed
+      const existingSizeIds = existingProduct.sizes
+        ? Array.isArray(existingProduct.sizes)
+          ? existingProduct.sizes.map((id) => id.toString())
+          : [existingProduct.sizes.toString()]
+        : [];
+
+      const sizesChanged =
+        JSON.stringify(sizeIds.sort()) !==
+        JSON.stringify(existingSizeIds.sort());
+
+      if (sizesChanged) {
+        for (const sizeId of sizeIds) {
+          const sizeExists = await Size.findById(sizeId);
+          if (!sizeExists) {
+            throw new Error(`Size with ID ${sizeId} not found`);
+          }
+        }
+      }
+    }
+
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, {});
     cache.del("newArrivals");
     cache.del("trendingProducts");
@@ -522,6 +564,7 @@ exports.getByCategory = async (request, response) => {
       .populate("category", "name slug")
       .populate("subCategory", "name slug")
       .populate("subSubCategory", "name slug")
+      .populate("sizes", "name")
       .sort(sort)
       .limit(Number(limit))
       .skip(skip);
@@ -599,6 +642,7 @@ exports.getProductByFilter = async (request, response) => {
       .populate("category", "name slug")
       .populate("subCategory", "name slug")
       .populate("subSubCategory", "name slug")
+      .populate("sizes", "name")
       .limit(Number(limit))
       .sort("-createdAt");
 

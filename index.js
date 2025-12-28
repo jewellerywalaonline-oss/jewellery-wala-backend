@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const compression = require("compression");
 
 require("dotenv").config();
 const app = express();
@@ -15,20 +16,23 @@ app.use((req, res, next) => {
   }
 });
 
+app.use(compression());
+
 // npm install express body-parser
 app.use(bodyParser.json());
 
-app.use(cors());
-// {
-//     origin: [
-//       "http://localhost:3000",
-//       "https://jewellery-wala-adminpanel.vercel.app",
-//       "https://jewellerywalla.com",
-//     ],
-//     credentials: true,
-//     allowedHeaders: "*",
-//     methods: "*",
-//   }
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://adminpanel.jewellerywalla.com",
+      "https://jewellerywalla.com",
+    ],
+    credentials: true,
+    allowedHeaders: "*",
+    methods: "*",
+  })
+);
 
 app.use(express.urlencoded({ extended: true }));
 
@@ -51,6 +55,7 @@ const suggestionRoutes = require("./src/routes/web/suggestion.routes");
 const coupenRoutes = require("./src/routes/web/coupen.routes");
 // admin routes variables
 const materialRoutes = require("./src/routes/admin/material.routes");
+const sizeRoutes = require("./src/routes/admin/size.routes");
 const colorRoutes = require("./src/routes/admin/color.routes");
 const userAdminRoutes = require("./src/routes/admin/userAdmin.routes");
 const adminCategoryRoutes = require("./src/routes/admin/adminCategory.routes");
@@ -93,6 +98,7 @@ app.use("/api/admin/subsubcategory", adminSubSubCategoryRoutes);
 app.use("/api/admin/product", adminProductRoutes);
 app.use("/api/admin/color", colorRoutes);
 app.use("/api/admin/material", materialRoutes);
+app.use("/api/admin/size", sizeRoutes);
 app.use("/api/admin/faq", adminFaqRoutes);
 app.use("/api/admin/testimonial", adminTestimonialRoutes);
 app.use("/api/admin/review", adminReviewRoutes);

@@ -544,7 +544,7 @@ module.exports.googleLogin = async (req, res) => {
 
     // Check if user exists by email OR googleId
     let user = await userModel.findOne({
-      $or: [{ email }, { googleId: sub }],
+      $or: [{ email }, { googleId: googleId }],
     });
 
     if (!user) {
@@ -554,7 +554,7 @@ module.exports.googleLogin = async (req, res) => {
         email,
         password: await hashPassword(Math.random().toString(36).slice(-8)),
         avatar,
-        googleId: sub, // Store Google ID
+        googleId: googleId, // Store Google ID
         isEmailVerified: true,
         status: true,
       });
@@ -565,7 +565,7 @@ module.exports.googleLogin = async (req, res) => {
       });
     } else if (!user.googleId) {
       // Link Google account to existing email user
-      user.googleId = sub;
+      user.googleId = googleId;
       user.isEmailVerified = true;
       if (!user.avatar) user.avatar = avatar;
       await user.save();

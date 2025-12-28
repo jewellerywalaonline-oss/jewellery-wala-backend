@@ -68,6 +68,7 @@ exports.createOrder = async (req, res) => {
         orderItems.push({
           productId: product._id,
           colorId: cartItem.color,
+          sizeId: cartItem.size || null,
           name: product.name,
           description: product.description,
           quantity: cartItem.quantity,
@@ -102,6 +103,7 @@ exports.createOrder = async (req, res) => {
         orderItems.push({
           productId: product._id,
           colorId: item.colorId,
+          sizeId: item.sizeId || null,
           name: product.name,
           description: product.description,
           quantity: item.quantity,
@@ -456,6 +458,7 @@ exports.getUserOrders = async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .populate("items.productId", "name images slug")
+      .populate("items.sizeId", "name value")
       .lean();
 
     const count = await Order.countDocuments(query);
@@ -487,6 +490,7 @@ exports.getOrderById = async (req, res) => {
       .populate("items.productId", "name images slug")
       .select("-payment.razorpay.signature")
       .populate("items.colorId", "name code")
+      .populate("items.sizeId", "name value")
       .lean();
 
     if (!order) {
@@ -517,6 +521,7 @@ exports.getOrder = async (req, res) => {
     const order = await Order.findOne({ orderId })
       .populate("items.productId", "name images slug")
       .populate("items.colorId", "name code")
+      .populate("items.sizeId", "name value")
       .select("-payment.razorpay.signature")
       .lean();
 

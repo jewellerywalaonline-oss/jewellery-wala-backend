@@ -6,9 +6,8 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please Enter A Name"],
       minlength: 3,
-      
+
       match: /^[a-zA-Z 0-9"' ]+$/,
-     
     },
     slug: {
       type: String,
@@ -39,6 +38,12 @@ const productSchema = new mongoose.Schema(
         required: [true, "Please Enter A Material"],
       },
     ],
+    sizes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "sizes",
+      },
+    ],
     category: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -57,7 +62,6 @@ const productSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "SubSubCategories",
-       
       },
     ],
 

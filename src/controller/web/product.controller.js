@@ -20,11 +20,39 @@ exports.getOne = async (request, response) => {
       status: true,
       deletedAt: null,
     })
-      .populate("colors", "name code")
-      .populate("material", "name ")
-      .populate("category", "name slug")
-      .populate("subCategory", "name slug")
-      .populate("subSubCategory", "name slug")
+      .populate({
+        path: "colors",
+        select: "name code",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "material",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "sizes",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "category",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subSubCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
       .lean();
 
     if (!product) {
@@ -52,7 +80,11 @@ exports.getOne = async (request, response) => {
 exports.getByCategory = async (req, res) => {
   try {
     const { categorySlug, subCategorySlug, subSubCategorySlug } = req.params;
-    const { page = 1, limit = 20, sort = "-createdAt" } = req.query;
+    const {
+      page = 1,
+      limit = 20,
+      sort = { order: 1, createdAt: -1 },
+    } = req.query;
 
     const skip = (page - 1) * limit;
 
@@ -88,9 +120,9 @@ exports.getByCategory = async (req, res) => {
       deletedAt: null, // exclude soft-deleted
       status: true,
     })
-      .populate("category")
-      .populate("subCategory")
-      .populate("subSubCategory")
+      .populate({ path: "category", match: { deletedAt: null } })
+      .populate({ path: "subCategory", match: { deletedAt: null } })
+      .populate({ path: "subSubCategory", match: { deletedAt: null } })
       .sort(sort)
       .limit(Number(limit))
       .skip(skip);
@@ -212,17 +244,45 @@ exports.getProductByFilter = async (req, res) => {
     const skip = Math.max(0, (page - 1) * limit);
     // ✅ Fetch results
     const products = await Product.find(query)
-      .populate("category", "name slug")
-      .populate("subCategory", "name slug")
-      .populate("subSubCategory", "name slug")
-      .populate("colors", "name code")
-      .populate("material", "name ")
+      .populate({
+        path: "category",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subSubCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "colors",
+        select: "name code",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "material",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "sizes",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
       .select(
-        "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+        "name slug images price image stock discount_price colors material sizes category subCategory subSubCategory"
       )
       .limit(limit)
       .skip(skip)
-      .sort({ createdAt: -1 })
+      .sort({ order: 1, createdAt: -1 })
       .lean();
 
     res.send({
@@ -276,15 +336,42 @@ exports.getBySearch = async (req, res) => {
     };
 
     const products = await Product.find(query)
-      .populate("category", "name slug")
-      .populate("subCategory", "name slug")
-      .populate("subSubCategory", "name slug")
-      .populate("colors", "name code")
-      .populate("material", "name ")
+      .populate({
+        path: "category",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subSubCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "colors",
+        select: "name code",
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "material",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "sizes",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
       .select(
-        "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+        "name slug images price image stock discount_price colors material sizes category subCategory subSubCategory"
       )
-      .sort({ createdAt: -1 })
+      .sort({ order: 1, createdAt: -1 })
       .limit(parsedLimit)
       .lean();
 
@@ -310,13 +397,43 @@ exports.getAll = async (req, res) => {
       deletedAt: null,
       status: true,
     })
-      .populate("category", "name slug")
-      .populate("subCategory", "name slug")
-      .populate("subSubCategory", "name slug")
+      .populate({
+        path: "category",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subSubCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "colors",
+        select: "name code",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "material",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "sizes",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
       .select(
-        "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+        "name slug images price image stock discount_price colors material sizes category subCategory subSubCategory"
       )
-      .sort({ createdAt: -1 })
+      .sort({ order: 1, createdAt: -1 })
       .lean();
     res.send({
       _status: true,
@@ -348,15 +465,43 @@ exports.relatedProducts = async (req, res) => {
         subSubCategory: { $in: subSubCategoryIds },
       })
         .limit(10)
-        .populate("category", "name slug")
-        .populate("subCategory", "name slug")
-        .populate("subSubCategory", "name slug")
-        .populate("colors", "name code")
+        .populate({
+          path: "category",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "subCategory",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "subSubCategory",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "colors",
+          select: "name code",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
+        .populate({
+          path: "material",
+          select: "name",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
+        .populate({
+          path: "sizes",
+          select: "name",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
         .select(
-          "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+          "name slug images price image stock discount_price colors material sizes category subCategory subSubCategory"
         )
-        .populate("material", "name")
-        .sort({ createdAt: -1 })
+        .sort({ order: 1, createdAt: -1 })
         .lean();
     }
 
@@ -372,11 +517,39 @@ exports.relatedProducts = async (req, res) => {
         _id: { $nin: existingProductIds }, // Exclude already fetched products
       })
         .limit(remainingLimit)
-        .populate("category", "name slug")
-        .populate("subCategory", "name slug")
-        .populate("subSubCategory", "name slug")
-        .populate("colors", "name code")
-        .populate("material", "name")
+        .populate({
+          path: "category",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "subCategory",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "subSubCategory",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "colors",
+          select: "name code",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
+        .populate({
+          path: "material",
+          select: "name",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
+        .populate({
+          path: "sizes",
+          select: "name",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
         .lean();
 
       products = [...products, ...subCategoryProducts];
@@ -417,15 +590,43 @@ exports.newArrivals = async (req, res) => {
       deletedAt: null,
       status: true,
     })
-      .populate("category", "name slug")
-      .populate("subCategory", "name slug")
-      .populate("subSubCategory", "name slug")
-      .populate("colors", "name code")
-      .populate("material", "name ")
+      .populate({
+        path: "category",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subSubCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "colors",
+        select: "name code",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "material",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "sizes",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
       .select(
-        "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+        "name slug images price image stock discount_price colors material sizes category subCategory subSubCategory"
       )
-      .sort("-createdAt")
+      .sort({ order: 1, createdAt: -1 })
       .limit(20)
       .lean();
 
@@ -460,15 +661,43 @@ exports.trendingProducts = async (req, res) => {
       deletedAt: null,
       status: true,
     })
-      .populate("category", "name slug")
-      .populate("subCategory", "name slug")
-      .populate("subSubCategory", "name slug")
-      .populate("colors", "name code")
-      .populate("material", "name ")
+      .populate({
+        path: "category",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "subSubCategory",
+        select: "name slug",
+        match: { deletedAt: null },
+      })
+      .populate({
+        path: "colors",
+        select: "name code",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "material",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "sizes",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
       .select(
-        "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+        "name slug images price image stock discount_price colors material sizes category subCategory subSubCategory"
       )
-      .sort("-createdAt")
+      .sort({ order: 1, createdAt: -1 })
       .limit(20)
       .lean();
 
@@ -506,12 +735,22 @@ exports.featuredForFooter = async (req, res) => {
       .populate("category", "name slug")
       .populate("subCategory", "name slug")
       .populate("subSubCategory", "name slug")
-      .populate("colors", "name code")
-      .populate("material", "name ")
+      .populate({
+        path: "colors",
+        select: "name code",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
+      .populate({
+        path: "material",
+        select: "name",
+        match: { deletedAt: null },
+        options: { sort: { order: 1 } },
+      })
       .select(
         "name slug images price image stock discount_price colors material category subCategory subSubCategory"
       )
-      .sort("-createdAt")
+      .sort({ order: 1, createdAt: -1 })
       .limit(2)
       .lean();
 
@@ -551,17 +790,40 @@ exports.tabProducts = async (req, res) => {
       })
         .populate({
           path: "material",
-          match: { name: { $regex: "gold", $options: "i" } },
+          match: { name: { $regex: "gold", $options: "i" }, deletedAt: null },
           select: "name",
         })
-        .populate("category", "name slug")
-        .populate("subCategory", "name slug")
-        .populate("subSubCategory", "name slug")
-        .populate("colors", "name code")
+        .populate({
+          path: "category",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "subCategory",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "subSubCategory",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "colors",
+          select: "name code",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
+        .populate({
+          path: "sizes",
+          select: "name",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
         .select(
-          "name slug images price image stock discount_price colors material category subCategory subSubCategory"
+          "name slug images price image stock discount_price colors material sizes category subCategory subSubCategory"
         )
-        .sort("-createdAt")
+        .sort({ order: 1, createdAt: -1 })
         .limit(4)
         .lean(),
 
@@ -573,14 +835,37 @@ exports.tabProducts = async (req, res) => {
       })
         .populate({
           path: "material",
-          match: { name: { $regex: "silver", $options: "i" } },
+          match: { name: { $regex: "silver", $options: "i" }, deletedAt: null },
           select: "name",
         })
-        .populate("category", "name slug")
-        .populate("subCategory", "name slug")
-        .populate("subSubCategory", "name slug")
-        .populate("colors", "name code")
-        .sort("-createdAt")
+        .populate({
+          path: "category",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "subCategory",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "subSubCategory",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "colors",
+          select: "name code",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
+        .populate({
+          path: "sizes",
+          select: "name",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
+        .sort({ order: 1, createdAt: -1 })
         .limit(4)
         .skip(4)
         .lean(),
@@ -592,18 +877,44 @@ exports.tabProducts = async (req, res) => {
       })
         .populate({
           path: "category",
-          match: { name: { $regex: "gift items", $options: "i" } }, // ✅ correct usage
+          match: {
+            name: { $regex: "gift items", $options: "i" },
+            deletedAt: null,
+          }, // ✅ correct usage
           select: "name slug",
         })
         .populate({
           path: "subCategory",
-          match: { name: { $regex: "gift items", $options: "i" } }, // ✅ correct usage
+          match: {
+            name: { $regex: "gift items", $options: "i" },
+            deletedAt: null,
+          }, // ✅ correct usage
           select: "name slug",
         })
-        .populate("subSubCategory", "name slug")
-        .populate("colors", "name code")
-        .populate("material", "name")
-        .sort("-createdAt")
+        .populate({
+          path: "subSubCategory",
+          select: "name slug",
+          match: { deletedAt: null },
+        })
+        .populate({
+          path: "colors",
+          select: "name code",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
+        .populate({
+          path: "material",
+          select: "name",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
+        .populate({
+          path: "sizes",
+          select: "name",
+          match: { deletedAt: null },
+          options: { sort: { order: 1 } },
+        })
+        .sort({ order: 1, createdAt: -1 })
         .limit(4)
         .skip(8)
         .lean(),

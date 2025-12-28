@@ -8,6 +8,7 @@ module.exports.getCart = async (req, res) => {
     const cart = await Cart.findOne({ user: req.user._id })
       .populate("items.product")
       .populate("items.color")
+      .populate("items.size")
       .lean();
     if (!cart || cart.items.length === 0) {
       return res.status(200).json({
@@ -45,6 +46,7 @@ module.exports.getCart = async (req, res) => {
             stock: product.stock,
           },
           color: item.color,
+          size: item.size,
           quantity: item.quantity,
           itemTotal: itemTotal,
         };
@@ -75,7 +77,7 @@ module.exports.addToCart = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { productId, quantity = 1, colorId } = req.body;
+    const { productId, quantity = 1, colorId, sizeId } = req.body;
     const userId = req.user._id;
 
     // Validate input
@@ -124,11 +126,12 @@ module.exports.addToCart = async (req, res) => {
       });
     }
 
-    // Check if product with same color already exists in cart
+    // Check if product with same color and size already exists in cart
     const existingItemIndex = cart.items.findIndex(
       (item) =>
         item.product.toString() === productId &&
-        item.color.toString() === colorId
+        item.color.toString() === colorId &&
+        (item.size?.toString() || null) === (sizeId || null)
     );
 
     if (existingItemIndex > -1) {
@@ -140,6 +143,7 @@ module.exports.addToCart = async (req, res) => {
         product: productId,
         quantity,
         color: colorId,
+        size: sizeId || null,
       });
     }
 
@@ -402,4 +406,3 @@ module.exports.clearCart = async (req, res) => {
 };
 
 // cart count
-
