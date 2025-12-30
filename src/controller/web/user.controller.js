@@ -515,7 +515,7 @@ const { OAuth2Client } = require("google-auth-library");
 
 module.exports.googleLogin = async (req, res) => {
   try {
-    const { credential } = req.body;
+    const { credential, mobile } = req.body;
 
     if (!credential) {
       return res.status(400).json({
@@ -557,6 +557,7 @@ module.exports.googleLogin = async (req, res) => {
         googleId: googleId, // Store Google ID
         isEmailVerified: true,
         status: true,
+        mobile: mobile,
       });
     } else if (!user.status) {
       return res.status(403).json({
@@ -566,6 +567,7 @@ module.exports.googleLogin = async (req, res) => {
     } else if (!user.googleId) {
       // Link Google account to existing email user
       user.googleId = googleId;
+      user.mobile = mobile;
       user.isEmailVerified = true;
       if (!user.avatar) user.avatar = avatar;
       await user.save();
@@ -614,7 +616,7 @@ module.exports.googleAuthRedirect = async (req, res) => {
 // New endpoint to handle the callback
 module.exports.googleAuthCallback = async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, mobile } = req.body;
 
     if (!code) {
       return res.status(400).json({
@@ -628,6 +630,7 @@ module.exports.googleAuthCallback = async (req, res) => {
       process.env.GOOGLE_CLIENT_SECRET,
       `${process.env.FRONTEND_URL}/auth/google/callback`
     );
+    console.log(`${process.env.FRONTEND_URL}/auth/google/callback`);
 
     // Exchange code for tokens
     const { tokens } = await client.getToken(code);
@@ -663,6 +666,7 @@ module.exports.googleAuthCallback = async (req, res) => {
         googleId,
         isEmailVerified: true,
         status: true,
+        mobile: mobile,
       });
     } else if (!user.status) {
       return res.status(403).json({
@@ -672,6 +676,7 @@ module.exports.googleAuthCallback = async (req, res) => {
     } else if (!user.googleId) {
       user.googleId = googleId;
       user.isEmailVerified = true;
+      user.mobile = mobile;
       if (!user.avatar) user.avatar = avatar;
       await user.save();
     }
@@ -698,7 +703,6 @@ module.exports.googleAuthCallback = async (req, res) => {
     });
   }
 };
-
 
 //
 module.exports.reLogin = async (req, res) => {

@@ -12,6 +12,7 @@ const {
   completeVerify,
   changePassword,
   googleAuthCallback,
+  googleLogin,
   reLogin,
 } = require("../../controller/web/user.controller");
 const protect = require("../../middleware/authMiddleware");
@@ -61,7 +62,7 @@ router.post("/verify-user", protect, uploadNone, verifyUser);
 
 router.post("/complete-verify", protect, uploadNone, completeVerify);
 
-// router.post("/google-login", uploadNone, googleLogin);
+router.post("/google-login", uploadNone, googleLogin);
 
 router.post("/google-callback", uploadNone, googleAuthCallback);
 
