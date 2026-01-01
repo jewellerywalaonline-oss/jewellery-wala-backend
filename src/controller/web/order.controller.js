@@ -566,19 +566,19 @@ exports.cancelOrder = async (req, res) => {
     // );
     // console.log(  payment);
 
-    // Check if order is within 1 day (24 hours) of creation
+    // Check if order is within 12 hours of creation
     const orderCreatedAt = new Date(order.createdAt);
     const currentTime = new Date();
     const timeDifference = currentTime - orderCreatedAt;
-    const oneDayInMilliseconds = 24 * 60 * 60 * 1000;
+    const twelveHoursInMilliseconds = 12 * 60 * 60 * 1000;
 
     if (
       order.payment.status !== "pending" &&
-      timeDifference > oneDayInMilliseconds
+      timeDifference > twelveHoursInMilliseconds
     ) {
       return res.status(400).json({
         success: false,
-        message: "Order can only be cancelled within 24 hours of placement",
+        message: "Order can only be cancelled within 12 hours of placement",
       });
     }
 
