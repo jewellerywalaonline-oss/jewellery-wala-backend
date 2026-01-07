@@ -526,9 +526,9 @@ exports.bulkUpdateRefundStatus = async (req, res) => {
 // order delievered api
 exports.delieverOrder = async (req, res) => {
   try {
-    const { orderId } = req.params;
+    const { orderId } = req.body;
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findOne({orderId});
 
     if (!order) {
       return res.status(404).json({
@@ -546,8 +546,6 @@ exports.delieverOrder = async (req, res) => {
 
     order.status = "delivered";
     order.shipping.deliveredAt = new Date();
-
-    // If COD, mark payment as completed upon delivery
     if (order.payment.method === "cod") {
       order.payment.status = "completed";
       order.payment.paidAt = new Date();
