@@ -14,7 +14,7 @@ const fetchRazorpayRefundStatus = async (paymentId, refundId) => {
     if (!paymentId) {
       return { error: "Payment ID not found" };
     }
-console.log("paymentId", paymentId ,"refundId", refundId);
+
     // If refundId is provided, fetch specific refund
     if (refundId) {
       const refund = await razorpay.refunds.fetch(refundId);
@@ -23,7 +23,7 @@ console.log("paymentId", paymentId ,"refundId", refundId);
         amount: refund.amount / 100,
         id: refund.id,
         created_at: refund.created_at,
-        error: null
+        error: null,
       };
     }
     console.log("refunds", refund);
@@ -37,20 +37,21 @@ console.log("paymentId", paymentId ,"refundId", refundId);
         amount: latestRefund.amount / 100,
         id: latestRefund.id,
         created_at: latestRefund.created_at,
-        error: null
+        error: null,
       };
     }
 
     return { error: "No refunds found for this payment" };
-
   } catch (error) {
     console.error("Razorpay refund fetch error:", error);
     return {
-      error: error.error?.description || error.message || "Failed to fetch from Razorpay"
+      error:
+        error.error?.description ||
+        error.message ||
+        "Failed to fetch from Razorpay",
     };
   }
 };
-
 
 // Get all refunded orders for admin
 exports.getRefundedOrdersForAdmin = async (req, res) => {
@@ -61,8 +62,8 @@ exports.getRefundedOrdersForAdmin = async (req, res) => {
         { status: "refunded" },
         { status: "cancelled", "cancellation.refundStatus": { $exists: true } },
         { "payment.status": "refunded" },
-        { "payment.status": "partially_refunded" }
-      ]
+        { "payment.status": "partially_refunded" },
+      ],
     })
       .populate("userId", "name email phone")
       .sort({ "cancellation.refundedAt": -1, updatedAt: -1 })
@@ -74,19 +75,19 @@ exports.getRefundedOrdersForAdmin = async (req, res) => {
       initiated: [],
       completed: [],
       failed: [],
-      mismatched: [] // Orders where status doesn't match actual state
+      mismatched: [], // Orders where status doesn't match actual state
     };
 
-    refundedOrders.forEach(order => {
+    refundedOrders.forEach((order) => {
       const refundStatus = order.cancellation?.refundStatus || "unknown";
-      
+
       // Check for mismatched status
       // If refundedAt exists but status is not completed
       if (order.cancellation?.refundedAt && refundStatus !== "completed") {
         categorizedOrders.mismatched.push({
           ...order,
           suggestedStatus: "completed",
-          issue: "Refund processed but status not updated to completed"
+          issue: "Refund processed but status not updated to completed",
         });
       }
       // If refund failed but order status is still refunded
@@ -94,7 +95,7 @@ exports.getRefundedOrdersForAdmin = async (req, res) => {
         categorizedOrders.mismatched.push({
           ...order,
           suggestedStatus: "cancelled",
-          issue: "Refund failed but order marked as refunded"
+          issue: "Refund failed but order marked as refunded",
         });
       }
       // Otherwise categorize normally
@@ -114,17 +115,16 @@ exports.getRefundedOrdersForAdmin = async (req, res) => {
           initiated: categorizedOrders.initiated.length,
           completed: categorizedOrders.completed.length,
           failed: categorizedOrders.failed.length,
-          mismatched: categorizedOrders.mismatched.length
-        }
-      }
+          mismatched: categorizedOrders.mismatched.length,
+        },
+      },
     });
-
   } catch (error) {
     console.error("Error fetching refunded orders:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch refunded orders",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -136,13 +136,13 @@ exports.verifyRefundStatus = async (req, res) => {
 
     // Find the order
     const order = await Order.findOne({
-      $or: [{ orderId }, { _id: orderId }]
+      $or: [{ orderId }, { _id: orderId }],
     });
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found"
+        message: "Order not found",
       });
     }
 
@@ -152,7 +152,7 @@ exports.verifyRefundStatus = async (req, res) => {
     if (!paymentId) {
       return res.status(400).json({
         success: false,
-        message: "No payment ID found for this order"
+        message: "No payment ID found for this order",
       });
     }
 
@@ -168,8 +168,8 @@ exports.verifyRefundStatus = async (req, res) => {
           orderId: order.orderId,
           currentStatus: order.cancellation?.refundStatus,
           paymentId: paymentId,
-          refundId: refundId
-        }
+          refundId: refundId,
+        },
       });
     }
 
@@ -199,27 +199,26 @@ exports.verifyRefundStatus = async (req, res) => {
           amount: razorpayStatus.amount,
           refundId: razorpayStatus.id,
           createdAt: razorpayStatus.created_at,
-          speed: razorpayStatus.speed
+          speed: razorpayStatus.speed,
         },
         databaseStatus: {
           refundStatus: currentDbStatus,
           orderStatus: order.status,
-          paymentStatus: order.payment?.status
+          paymentStatus: order.payment?.status,
         },
         isMatched: isMatched,
         needsUpdate: !isMatched,
-        suggestedAction: !isMatched 
-          ? `Update database status from "${currentDbStatus}" to "${mappedStatus}"` 
-          : "Status is already up to date"
-      }
+        suggestedAction: !isMatched
+          ? `Update database status from "${currentDbStatus}" to "${mappedStatus}"`
+          : "Status is already up to date",
+      },
     });
-
   } catch (error) {
     console.error("Error verifying refund status:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to verify refund status",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -228,13 +227,13 @@ exports.verifyRefundStatus = async (req, res) => {
 exports.updateRefundStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { 
-      refundStatus, 
-      refundAmount, 
-      refundId, 
-      refundError, 
+    const {
+      refundStatus,
+      refundAmount,
+      refundId,
+      refundError,
       notes,
-      skipVerification = false // Option to skip Razorpay verification
+      skipVerification = false, // Option to skip Razorpay verification
     } = req.body;
 
     // Validate refund status
@@ -242,19 +241,20 @@ exports.updateRefundStatus = async (req, res) => {
     if (!validStatuses.includes(refundStatus)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid refund status. Must be one of: pending, initiated, completed, failed"
+        message:
+          "Invalid refund status. Must be one of: pending, initiated, completed, failed",
       });
     }
 
     // Find the order
     const order = await Order.findOne({
-      $or: [{ orderId }, { _id: orderId }]
+      $or: [{ orderId }, { _id: orderId }],
     });
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found"
+        message: "Order not found",
       });
     }
 
@@ -285,8 +285,8 @@ exports.updateRefundStatus = async (req, res) => {
               requestedStatus: refundStatus,
               razorpayStatus: razorpayStatus.status,
               mappedRazorpayStatus: razorpayMappedStatus,
-              suggestion: `Razorpay shows status as "${razorpayStatus.status}". Please update to "${razorpayMappedStatus}" instead.`
-            }
+              suggestion: `Razorpay shows status as "${razorpayStatus.status}". Please update to "${razorpayMappedStatus}" instead.`,
+            },
           });
         }
 
@@ -305,14 +305,14 @@ exports.updateRefundStatus = async (req, res) => {
 
     // Prepare update object
     const updateData = {
-      "cancellation.refundStatus": refundStatus
+      "cancellation.refundStatus": refundStatus,
     };
 
     // Add optional fields if provided
     if (req.body.refundAmount !== undefined) {
       updateData["cancellation.refundAmount"] = req.body.refundAmount;
     }
-    
+
     if (req.body.refundId) {
       updateData["cancellation.refundId"] = req.body.refundId;
     }
@@ -336,8 +336,10 @@ exports.updateRefundStatus = async (req, res) => {
 
     // Add internal note if provided
     if (notes) {
-      updateData["notes.internal"] = order.notes?.internal 
-        ? `${order.notes.internal}\n[${new Date().toISOString()}] Refund Update: ${notes}`
+      updateData["notes.internal"] = order.notes?.internal
+        ? `${
+            order.notes.internal
+          }\n[${new Date().toISOString()}] Refund Update: ${notes}`
         : `[${new Date().toISOString()}] Refund Update: ${notes}`;
     }
 
@@ -352,15 +354,14 @@ exports.updateRefundStatus = async (req, res) => {
       success: true,
       message: "Refund status updated successfully",
       data: updatedOrder,
-      verified: !skipVerification
+      verified: !skipVerification,
     });
-
   } catch (error) {
     console.error("Error updating refund status:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to update refund status",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -372,8 +373,11 @@ exports.syncRefundStatusesFromRazorpay = async (req, res) => {
       "payment.razorpay.paymentId": { $exists: true },
       $or: [
         { "cancellation.refundStatus": { $in: ["pending", "initiated"] } },
-        { status: "refunded", "cancellation.refundStatus": { $ne: "completed" } }
-      ]
+        {
+          status: "refunded",
+          "cancellation.refundStatus": { $ne: "completed" },
+        },
+      ],
     });
 
     const results = {
@@ -381,7 +385,7 @@ exports.syncRefundStatusesFromRazorpay = async (req, res) => {
       updated: 0,
       alreadyUpToDate: 0,
       failed: [],
-      details: []
+      details: [],
     };
 
     for (const order of orders) {
@@ -394,7 +398,7 @@ exports.syncRefundStatusesFromRazorpay = async (req, res) => {
         if (razorpayStatus.error) {
           results.failed.push({
             orderId: order.orderId,
-            error: razorpayStatus.error
+            error: razorpayStatus.error,
           });
           continue;
         }
@@ -420,11 +424,13 @@ exports.syncRefundStatusesFromRazorpay = async (req, res) => {
         const updateData = {
           "cancellation.refundStatus": mappedStatus,
           "cancellation.refundId": razorpayStatus.id,
-          "cancellation.refundAmount": razorpayStatus.amount
+          "cancellation.refundAmount": razorpayStatus.amount,
         };
 
         if (mappedStatus === "completed") {
-          updateData["cancellation.refundedAt"] = new Date(razorpayStatus.created_at * 1000);
+          updateData["cancellation.refundedAt"] = new Date(
+            razorpayStatus.created_at * 1000
+          );
           updateData["status"] = "refunded";
           updateData["payment.status"] = "refunded";
         } else if (mappedStatus === "failed") {
@@ -439,13 +445,12 @@ exports.syncRefundStatusesFromRazorpay = async (req, res) => {
           orderId: order.orderId,
           oldStatus: currentStatus,
           newStatus: mappedStatus,
-          razorpayRefundId: razorpayStatus.id
+          razorpayRefundId: razorpayStatus.id,
         });
-
       } catch (error) {
         results.failed.push({
           orderId: order.orderId,
-          error: error.message
+          error: error.message,
         });
       }
     }
@@ -453,15 +458,14 @@ exports.syncRefundStatusesFromRazorpay = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: `Sync completed. Updated ${results.updated} orders.`,
-      data: results
+      data: results,
     });
-
   } catch (error) {
     console.error("Error syncing refund statuses:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to sync refund statuses",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -474,7 +478,7 @@ exports.bulkUpdateRefundStatus = async (req, res) => {
     if (!Array.isArray(orderIds) || orderIds.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "orderIds must be a non-empty array"
+        message: "orderIds must be a non-empty array",
       });
     }
 
@@ -482,12 +486,12 @@ exports.bulkUpdateRefundStatus = async (req, res) => {
     if (!validStatuses.includes(refundStatus)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid refund status"
+        message: "Invalid refund status",
       });
     }
 
     const updateData = {
-      "cancellation.refundStatus": refundStatus
+      "cancellation.refundStatus": refundStatus,
     };
 
     if (refundStatus === "completed") {
@@ -506,16 +510,62 @@ exports.bulkUpdateRefundStatus = async (req, res) => {
       message: `Updated ${result.modifiedCount} orders`,
       data: {
         matched: result.matchedCount,
-        modified: result.modifiedCount
-      }
+        modified: result.modifiedCount,
+      },
     });
-
   } catch (error) {
     console.error("Error in bulk update:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to bulk update refund status",
-      error: error.message
+      error: error.message,
+    });
+  }
+};
+
+// order delievered api
+exports.delieverOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    if (order.status === "cancelled" || order.status === "refunded") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot deliver a cancelled or refunded order",
+      });
+    }
+
+    order.status = "delivered";
+    order.shipping.deliveredAt = new Date();
+
+    // If COD, mark payment as completed upon delivery
+    if (order.payment.method === "cod") {
+      order.payment.status = "completed";
+      order.payment.paidAt = new Date();
+    }
+
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Order marked as delivered successfully",
+      data: order,
+    });
+  } catch (error) {
+    console.error("Error marking order as delivered:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to mark order as delivered",
+      error: error.message,
     });
   }
 };
