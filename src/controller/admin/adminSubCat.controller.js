@@ -26,6 +26,8 @@ exports.create = async (request, response) => {
 
     const ress = await data.save();
     cache.del("navigationData");
+    cache.del("subCategory_men");
+    cache.del("subCategory_women");
     const output = {
       _status: true,
       _message: "Data Inserted",
@@ -60,7 +62,6 @@ exports.create = async (request, response) => {
 // view
 exports.view = async (request, response) => {
   try {
-  
     const andCondition = [{ deletedAt: null }];
     const orCondition = [];
 
@@ -104,7 +105,6 @@ exports.view = async (request, response) => {
       _status: ress.length > 0,
       _message: ress.length > 0 ? "Data Found" : "No Data Found",
       _data: ress.length > 0 ? ress : [],
-     
     };
 
     response.send(output);
@@ -133,12 +133,14 @@ exports.destroy = async (request, response) => {
       }
     );
 
+    cache.del("navigationData");
+    cache.del("subCategory_men");
+    cache.del("subCategory_women");
     const output = {
       _status: true,
       _message: "Data Deleted",
       _data: result,
     };
-    cache.del("navigationData");
     response.send(output);
   } catch (err) {
     const output = {
@@ -205,12 +207,14 @@ exports.update = async (request, response) => {
       }
     );
 
+    cache.del("navigationData");
+    cache.del("subCategory_men");
+    cache.del("subCategory_women");
     const output = {
       _status: true,
       _message: "Data Updated",
       _data: ress,
     };
-    cache.del("navigationData");
     response.send(output);
   } catch (err) {
     const output = {
@@ -241,12 +245,14 @@ exports.changeStatus = async (request, response) => {
       ]
     );
 
+    cache.del("navigationData");
+    cache.del("subCategory_men");
+    cache.del("subCategory_women");
     const output = {
       _status: true,
       _message: "Status Changed",
       _data: result,
     };
-    cache.del("navigationData");
     response.send(output);
   } catch (err) {
     const output = {

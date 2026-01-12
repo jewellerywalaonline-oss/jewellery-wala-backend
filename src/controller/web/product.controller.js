@@ -2,8 +2,7 @@ const Product = require("../../models/product");
 const Category = require("../../models/category");
 const SubCategory = require("../../models/subCategory");
 const SubSubCategory = require("../../models/subSubCategory");
-const material = require("./../../models/material")
-
+const material = require("./../../models/material");
 const cache = require("../../lib/cache");
 
 // Get Single Product by ID or Slug
@@ -189,6 +188,12 @@ exports.getProductByFilter = async (req, res) => {
     if (searchQuery && searchQuery.trim() !== "") {
       const trimmedSearch = searchQuery.trim();
 
+      // Gender keywords to detect for subCategory filtering
+      const genderKeywords = {
+        men: ["men", "man", "mans", "mens"],
+        women: ["women", "woman", "womans", "womens"],
+      };
+
       // Common stop words to filter out
       const stopWords = new Set([
         "for",
@@ -213,15 +218,68 @@ exports.getProductByFilter = async (req, res) => {
         "mans",
         "mens",
         "womans",
+        "womens",
         "woman",
       ]);
 
-      // Split search term into words and filter out stop words
-      const searchWords = trimmedSearch
-        .split(/\s+/)
-        .filter(
-          (word) => word.length > 1 && !stopWords.has(word.toLowerCase())
-        );
+      // Split search term into words
+      const allSearchWords = trimmedSearch.split(/\s+/);
+
+      // Detect gender keywords in search
+      let genderSubCategoryIds = [];
+      for (const word of allSearchWords) {
+        const lowerWord = word.toLowerCase();
+
+        // Check for men keywords
+        if (genderKeywords.men.includes(lowerWord)) {
+          const cacheKey = "subCategory_men";
+          if (cache.has(cacheKey)) {
+            const cachedIds = cache.get(cacheKey);
+            genderSubCategoryIds.push(...cachedIds);
+          } else {
+            const menSubCategories = await SubCategory.find({
+              name: { $regex: "\\bmens\\b", $options: "i" },
+              status: true,
+              deletedAt: null,
+            })
+              .select("_id")
+              .lean();
+            const ids = menSubCategories.map((sc) => sc._id);
+            cache.set(cacheKey, ids);
+            genderSubCategoryIds.push(...ids);
+          }
+        }
+
+        // Check for women keywords
+        if (genderKeywords.women.includes(lowerWord)) {
+          const cacheKey = "subCategory_women";
+          if (cache.has(cacheKey)) {
+            const cachedIds = cache.get(cacheKey);
+            genderSubCategoryIds.push(...cachedIds);
+          } else {
+            const womenSubCategories = await SubCategory.find({
+              name: { $regex: "\\bwomens\\b", $options: "i" },
+              status: true,
+              deletedAt: null,
+            })
+              .select("_id")
+              .lean();
+            const ids = womenSubCategories.map((sc) => sc._id);
+            cache.set(cacheKey, ids);
+            genderSubCategoryIds.push(...ids);
+          }
+        }
+      }
+
+      // Add subCategory filter if gender keywords were detected
+      if (genderSubCategoryIds.length > 0) {
+        query.subCategory = { $in: genderSubCategoryIds };
+      }
+
+      // Filter out stop words for text search
+      const searchWords = allSearchWords.filter(
+        (word) => word.length > 1 && !stopWords.has(word.toLowerCase())
+      );
 
       const effectiveSearchWords =
         searchWords.length > 0 ? searchWords : [trimmedSearch];
@@ -295,11 +353,11 @@ exports.getProductByFilter = async (req, res) => {
 
     // ✅ Price range filter
     if (priceFrom !== undefined && priceTo !== undefined) {
-      query.price = { $gte: Number(priceFrom), $lte: Number(priceTo) };
+      query.discount_price = { $gte: Number(priceFrom), $lte: Number(priceTo) };
     } else if (priceFrom !== undefined) {
-      query.price = { $gte: Number(priceFrom) };
+      query.discount_price = { $gte: Number(priceFrom) };
     } else if (priceTo !== undefined) {
-      query.price = { $lte: Number(priceTo) };
+      query.discount_price = { $lte: Number(priceTo) };
     }
     const total = await Product.countDocuments(query);
     const skip = Math.max(0, (page - 1) * limit);
@@ -828,16 +886,20 @@ exports.tabProducts = async (req, res) => {
       });
     }
     const [goldMat, silverMat] = await Promise.all([
-      material.findOne({
-        name: { $regex: "gold", $options: "i" },
-        status: true,
-        deletedAt: null,
-      }).select("_id"),
-      material.findOne({
-        name: { $regex: "silver", $options: "i" },
-        status: true,
-        deletedAt: null,
-      }).select("_id"),
+      material
+        .findOne({
+          name: { $regex: "gold", $options: "i" },
+          status: true,
+          deletedAt: null,
+        })
+        .select("_id"),
+      material
+        .findOne({
+          name: { $regex: "silver", $options: "i" },
+          status: true,
+          deletedAt: null,
+        })
+        .select("_id"),
     ]);
 
     const [goldProducts, silverProducts, giftProducts] = await Promise.all([
