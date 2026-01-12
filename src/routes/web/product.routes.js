@@ -11,6 +11,7 @@ const {
   tabProducts,
   newArrivals,
   trendingProducts,
+  bestSellers,
   featuredForFooter,
 } = require("../../controller/web/product.controller");
 const { uploadNone } = require("../../middleware/uploadMiddleware");
@@ -28,6 +29,7 @@ router.post("/get-related-products", uploadNone, relatedProducts);
 router.get("/tab-products", uploadNone, tabProducts);
 router.get("/new-arrivals", uploadNone, newArrivals);
 router.get("/trending-products", uploadNone, trendingProducts);
+router.get("/best-sellers", uploadNone, bestSellers);
 router.get("/featured-for-footer", uploadNone, featuredForFooter);
 
 // sitemap products

@@ -2,6 +2,7 @@ const Product = require("../../models/product");
 const Category = require("../../models/category");
 const SubCategory = require("../../models/subCategory");
 const SubSubCategory = require("../../models/subSubCategory");
+const material = require("./../../models/material")
 
 const cache = require("../../lib/cache");
 
@@ -175,13 +176,67 @@ exports.getProductByFilter = async (req, res) => {
       subSubCategorySlug,
       priceFrom,
       priceTo,
+      searchQuery,
       limit = 20,
       page = 1,
-    } = req.body || {}; // ✅ default to empty object
+    } = req.body || {};
     const query = {
       deletedAt: null,
       status: true,
     };
+
+    // ✅ Search query filter
+    if (searchQuery && searchQuery.trim() !== "") {
+      const trimmedSearch = searchQuery.trim();
+
+      // Common stop words to filter out
+      const stopWords = new Set([
+        "for",
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "of",
+        "to",
+        "in",
+        "on",
+        "with",
+        "him",
+        "her",
+        "is",
+        "it",
+        "by",
+        "men",
+        "women",
+        "man",
+        "mans",
+        "mens",
+        "womans",
+        "woman",
+      ]);
+
+      // Split search term into words and filter out stop words
+      const searchWords = trimmedSearch
+        .split(/\s+/)
+        .filter(
+          (word) => word.length > 1 && !stopWords.has(word.toLowerCase())
+        );
+
+      const effectiveSearchWords =
+        searchWords.length > 0 ? searchWords : [trimmedSearch];
+
+      const regexPatterns = effectiveSearchWords.map((word) => ({
+        $or: [
+          { name: { $regex: word, $options: "i" } },
+          { slug: { $regex: word, $options: "i" } },
+          { description: { $regex: word, $options: "i" } },
+        ],
+      }));
+
+      // Add search conditions to query using $or (ANY keyword matching)
+      query.$or = regexPatterns.map((pattern) => pattern.$or).flat();
+    }
     // ✅ Boolean filters
     if (isFeatured !== undefined) query.isFeatured = isFeatured;
     if (isNewArrival !== undefined) query.isNewArrival = isNewArrival;
@@ -303,128 +358,6 @@ exports.getProductByFilter = async (req, res) => {
       },
     });
   } catch (err) {
-    res.send({
-      _status: false,
-      _message: err.message || "Something went wrong",
-      _data: [],
-    });
-  }
-};
-
-exports.getBySearch = async (req, res) => {
-  try {
-    const { search, limit = 20 } = req.query;
-    const parsedLimit = parseInt(limit, 10) || 20;
-    // Trim and validate search term
-    if (!search || search.trim() === "") {
-      return res.send({
-        _status: false,
-        _message: "Search term is required",
-        _data: [],
-      });
-    }
-
-    const trimmedSearch = search.trim();
-
-    // Common stop words to filter out
-    const stopWords = new Set([
-      "for",
-      "the",
-      "a",
-      "an",
-      "and",
-      "or",
-      "of",
-      "to",
-      "in",
-      "on",
-      "with",
-      // "men",
-      // "women",
-      // "kids",
-      // "boys",
-      // "girls",
-      "him",
-      "her",
-      "is",
-      "it",
-      "by",
-    ]);
-
-    // Split search term into words and filter out stop words
-    const searchWords = trimmedSearch
-      .split(/\s+/)
-      .filter((word) => word.length > 1 && !stopWords.has(word.toLowerCase()));
-
-  
-    const effectiveSearchWords =
-      searchWords.length > 0 ? searchWords : [trimmedSearch];
-
-    const regexPatterns = effectiveSearchWords.map((word) => ({
-      $or: [
-        { name: { $regex: word, $options: "i" } },
-        { slug: { $regex: word, $options: "i" } },
-      ],
-    }));
-
-    // Use $or so ANY keyword matching will return results
-   
-    const query = {
-      $and: [
-        { $or: regexPatterns.map((pattern) => pattern.$or).flat() },
-        { deletedAt: null },
-        { status: true },
-      ],
-    };
-
-    const products = await Product.find(query)
-      .populate({
-        path: "category",
-        select: "name slug",
-        match: { deletedAt: null, status: true },
-      })
-      .populate({
-        path: "subCategory",
-        select: "name slug",
-        match: { deletedAt: null, status: true },
-      })
-      .populate({
-        path: "subSubCategory",
-        select: "name slug",
-        match: { deletedAt: null, status: true },
-      })
-      .populate({
-        path: "colors",
-        select: "name code",
-        match: { deletedAt: null, status: true },
-        options: { sort: { order: -1 } },
-      })
-      .populate({
-        path: "material",
-        select: "name",
-        match: { deletedAt: null, status: true },
-        options: { sort: { order: -1 } },
-      })
-      .populate({
-        path: "sizes",
-        select: "name",
-        match: { deletedAt: null, status: true },
-        options: { sort: { order: -1 } },
-      })
-      .select(
-        "name slug images price image stock discount_price colors material sizes category subCategory subSubCategory"
-      )
-      .sort({ order: -1, createdAt: -1 })
-      .limit(parsedLimit)
-      .lean();
-
-    res.send({
-      _status: true,
-      _message: "Products fetched successfully",
-      _data: products,
-    });
-  } catch (err) {
-    console.error("Search error:", err);
     res.send({
       _status: false,
       _message: err.message || "Something went wrong",
@@ -760,6 +693,77 @@ exports.trendingProducts = async (req, res) => {
   }
 };
 
+// best sellers
+exports.bestSellers = async (req, res) => {
+  try {
+    if (cache.has("bestSellers")) {
+      return res.send({
+        _status: true,
+        _message: "Products fetched successfully",
+        _data: cache.get("bestSellers"),
+      });
+    }
+    const products = await Product.find({
+      isBestSeller: true,
+      deletedAt: null,
+      status: true,
+    })
+      .populate({
+        path: "category",
+        select: "name slug",
+        match: { deletedAt: null, status: true },
+      })
+      .populate({
+        path: "subCategory",
+        select: "name slug",
+        match: { deletedAt: null, status: true },
+      })
+      .populate({
+        path: "subSubCategory",
+        select: "name slug",
+        match: { deletedAt: null, status: true },
+      })
+      .populate({
+        path: "colors",
+        select: "name code",
+        match: { deletedAt: null, status: true },
+        options: { sort: { order: -1 } },
+      })
+      .populate({
+        path: "material",
+        select: "name",
+        match: { deletedAt: null, status: true },
+        options: { sort: { order: -1 } },
+      })
+      .populate({
+        path: "sizes",
+        select: "name",
+        match: { deletedAt: null, status: true },
+        options: { sort: { order: -1 } },
+      })
+      .select(
+        "name slug images price image stock discount_price colors material sizes category subCategory subSubCategory"
+      )
+      .sort({ order: -1, createdAt: -1 })
+      .limit(20)
+      .lean();
+
+    cache.set("bestSellers", products);
+
+    res.send({
+      _status: true,
+      _message: "Products fetched successfully",
+      _data: products,
+    });
+  } catch (err) {
+    res.send({
+      _status: false,
+      _message: err.message || "Something went wrong",
+      _data: [],
+    });
+  }
+};
+
 // 2 featured for footer
 exports.featuredForFooter = async (req, res) => {
   try {
@@ -823,44 +827,60 @@ exports.tabProducts = async (req, res) => {
         _data: cache.get("tabProducts"),
       });
     }
+    const [goldMat, silverMat] = await Promise.all([
+      material.findOne({
+        name: { $regex: "gold", $options: "i" },
+        status: true,
+        deletedAt: null,
+      }).select("_id"),
+      material.findOne({
+        name: { $regex: "silver", $options: "i" },
+        status: true,
+        deletedAt: null,
+      }).select("_id"),
+    ]);
 
     const [goldProducts, silverProducts, giftProducts] = await Promise.all([
       // 🔹 Gold
       Product.find({
         deletedAt: null,
         status: true,
-        material: { $exists: true },
+        material: goldMat._id,
       })
         .populate({
           path: "material",
-          match: { name: { $regex: "gold", $options: "i" }, deletedAt: null },
+          match: {
+            // name: { $regex: "gold", $options: "i" },
+            deletedAt: null,
+            status: true,
+          },
           select: "name",
         })
         .populate({
           path: "category",
           select: "name slug",
-          match: { deletedAt: null },
+          match: { deletedAt: null, status: true },
         })
         .populate({
           path: "subCategory",
           select: "name slug",
-          match: { deletedAt: null },
+          match: { deletedAt: null, status: true },
         })
         .populate({
           path: "subSubCategory",
           select: "name slug",
-          match: { deletedAt: null },
+          match: { deletedAt: null, status: true },
         })
         .populate({
           path: "colors",
           select: "name code",
-          match: { deletedAt: null },
+          match: { deletedAt: null, status: true },
           options: { sort: { order: -1 } },
         })
         .populate({
           path: "sizes",
           select: "name",
-          match: { deletedAt: null },
+          match: { deletedAt: null, status: true },
           options: { sort: { order: -1 } },
         })
         .select(
@@ -874,12 +894,12 @@ exports.tabProducts = async (req, res) => {
       Product.find({
         deletedAt: null,
         status: true,
-        material: { $exists: true },
+        material: silverMat._id,
       })
         .populate({
           path: "material",
           match: {
-            name: { $regex: "silver", $options: "i" },
+            // name: { $regex: "silver", $options: "i" },
             deletedAt: null,
             status: true,
           },
@@ -914,20 +934,21 @@ exports.tabProducts = async (req, res) => {
         })
         .sort({ order: -1, createdAt: -1 })
         .limit(4)
-        .skip(4)
         .lean(),
 
       // 🔹 Gift Items (fixed)
       Product.find({
         deletedAt: null,
         status: true,
+        isGift: true,
       })
         .populate({
           path: "category",
           match: {
             name: { $regex: "gift items", $options: "i" },
             deletedAt: null,
-          }, // ✅ correct usage
+            status: true,
+          },
           select: "name slug",
         })
         .populate({
@@ -935,42 +956,42 @@ exports.tabProducts = async (req, res) => {
           match: {
             name: { $regex: "gift items", $options: "i" },
             deletedAt: null,
-          }, // ✅ correct usage
+            status: true,
+          },
           select: "name slug",
         })
         .populate({
           path: "subSubCategory",
           select: "name slug",
-          match: { deletedAt: null },
+          match: { deletedAt: null, status: true },
         })
         .populate({
           path: "colors",
           select: "name code",
-          match: { deletedAt: null },
+          match: { deletedAt: null, status: true },
           options: { sort: { order: -1 } },
         })
         .populate({
           path: "material",
           select: "name",
-          match: { deletedAt: null },
+          match: { deletedAt: null, status: true },
           options: { sort: { order: -1 } },
         })
         .populate({
           path: "sizes",
           select: "name",
-          match: { deletedAt: null },
+          match: { deletedAt: null, status: true },
           options: { sort: { order: -1 } },
         })
         .sort({ order: -1, createdAt: -1 })
         .limit(4)
-        .skip(8)
         .lean(),
     ]);
 
     // filter out the ones that didn't match populate
     const goldFiltered = goldProducts.filter((p) => p.material);
     const silverFiltered = silverProducts.filter((p) => p.material);
-    const giftFiltered = giftProducts.filter((p) => p.category); // ✅ add this too
+    const giftFiltered = giftProducts.filter((p) => p.category);
 
     cache.set("tabProducts", {
       gold: goldFiltered,
@@ -992,6 +1013,122 @@ exports.tabProducts = async (req, res) => {
       _status: false,
       _message: err.message || "Something went wrong",
       _data: { gold: [], silver: [], gift: [] },
+    });
+  }
+};
+
+exports.getBySearch = async (req, res) => {
+  try {
+    const { search, limit = 20 } = req.query;
+    const parsedLimit = parseInt(limit, 10) || 20;
+    // Trim and validate search term
+    if (!search || search.trim() === "") {
+      return res.send({
+        _status: false,
+        _message: "Search term is required",
+        _data: [],
+      });
+    }
+
+    const trimmedSearch = search.trim();
+
+    // Common stop words to filter out
+    const stopWords = new Set([
+      "for",
+      "the",
+      "a",
+      "an",
+      "and",
+      "or",
+      "of",
+      "to",
+      "in",
+      "on",
+      "with",
+      "him",
+      "her",
+      "is",
+      "it",
+      "by",
+    ]);
+
+    // Split search term into words and filter out stop words
+    const searchWords = trimmedSearch
+      .split(/\s+/)
+      .filter((word) => word.length > 1 && !stopWords.has(word.toLowerCase()));
+
+    const effectiveSearchWords =
+      searchWords.length > 0 ? searchWords : [trimmedSearch];
+
+    const regexPatterns = effectiveSearchWords.map((word) => ({
+      $or: [
+        { name: { $regex: word, $options: "i" } },
+        { slug: { $regex: word, $options: "i" } },
+      ],
+    }));
+
+    // Use $or so ANY keyword matching will return results
+
+    const query = {
+      $and: [
+        { $or: regexPatterns.map((pattern) => pattern.$or).flat() },
+        { deletedAt: null },
+        { status: true },
+      ],
+    };
+
+    const products = await Product.find(query)
+      .populate({
+        path: "category",
+        select: "name slug",
+        match: { deletedAt: null, status: true },
+      })
+      .populate({
+        path: "subCategory",
+        select: "name slug",
+        match: { deletedAt: null, status: true },
+      })
+      .populate({
+        path: "subSubCategory",
+        select: "name slug",
+        match: { deletedAt: null, status: true },
+      })
+      .populate({
+        path: "colors",
+        select: "name code",
+        match: { deletedAt: null, status: true },
+        options: { sort: { order: -1 } },
+      })
+      .populate({
+        path: "material",
+        select: "name",
+        match: { deletedAt: null, status: true },
+        options: { sort: { order: -1 } },
+      })
+      .populate({
+        path: "sizes",
+        select: "name",
+        match: { deletedAt: null, status: true },
+        options: { sort: { order: -1 } },
+      })
+      .select(
+        "name slug images price image stock discount_price colors material sizes category subCategory subSubCategory"
+      )
+      .sort({ order: -1, createdAt: -1 })
+      .limit(parsedLimit)
+      .lean();
+
+    res.send({
+      _status: true,
+      _message: "Products fetched successfully",
+      _data: products,
+    });
+  } catch (err) {
+    console.error("Search error:", err);
+    res.send({
+      _status: false,
+      _message: err.message || "Something went wrong",
+      _data: [],
     });
   }
 };
