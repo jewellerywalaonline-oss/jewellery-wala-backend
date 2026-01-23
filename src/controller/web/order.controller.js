@@ -849,6 +849,8 @@ exports.getAllOrders = async (req, res) => {
     const orders = await Order.find(query)
       .sort({ createdAt: -1 })
       .populate("items.productId", "name images slug")
+      .populate("items.colorId", "name")
+      .populate("items.sizeId", "name")
       .select("-payment.razorpay.signature")
       .lean();
 
