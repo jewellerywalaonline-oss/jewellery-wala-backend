@@ -237,7 +237,7 @@ exports.createRazorpayOrder = async (req, res) => {
     }
     // 5% discount on full purchase and 100 in advance for cod
     let options = {
-      amount: isCodAdvance ? 50 * 100 : order.pricing.total * 100,
+      amount: isCodAdvance ? 100 * 100 : order.pricing.total * 100,
       currency: "INR",
       receipt: order.orderId,
       notes: {
