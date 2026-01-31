@@ -8,6 +8,8 @@ const {
   syncRefundStatusesFromRazorpay,
   bulkUpdateRefundStatus,
   delieverOrder,
+  verifyPendingPayments,
+  confirmPendingPayment,
 } = require("../../controller/admin/adminOrder.controller"); // Adjust path
 
 const protect = require("../../middleware/authMiddleware");
@@ -28,5 +30,11 @@ router.post("/admin/refund/sync", protect, syncRefundStatusesFromRazorpay);
 router.post("/admin/refund/bulk", protect, bulkUpdateRefundStatus);
 
 router.post("/deliever/order", protect, delieverOrder);
+
+// verify pending payments
+router.post("/verify-pending-payments", verifyPendingPayments);
+
+// confirm pending payment
+router.post("/confirm-pending-payment", confirmPendingPayment);
 
 module.exports = router;

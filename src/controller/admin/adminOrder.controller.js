@@ -262,7 +262,7 @@ exports.updateRefundStatus = async (req, res) => {
     if (!skipVerification && order.payment?.razorpay?.paymentId) {
       const razorpayStatus = await fetchRazorpayRefundStatus(
         order.payment.razorpay.paymentId,
-        order.cancellation?.refundId
+        order.cancellation?.refundId,
       );
 
       if (!razorpayStatus.error) {
@@ -347,7 +347,7 @@ exports.updateRefundStatus = async (req, res) => {
     const updatedOrder = await Order.findByIdAndUpdate(
       order._id,
       { $set: updateData },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).populate("userId", "name email phone");
 
     return res.status(200).json({
@@ -392,7 +392,7 @@ exports.syncRefundStatusesFromRazorpay = async (req, res) => {
       try {
         const razorpayStatus = await fetchRazorpayRefundStatus(
           order.payment.razorpay.paymentId,
-          order.cancellation?.refundId
+          order.cancellation?.refundId,
         );
 
         if (razorpayStatus.error) {
@@ -429,7 +429,7 @@ exports.syncRefundStatusesFromRazorpay = async (req, res) => {
 
         if (mappedStatus === "completed") {
           updateData["cancellation.refundedAt"] = new Date(
-            razorpayStatus.created_at * 1000
+            razorpayStatus.created_at * 1000,
           );
           updateData["status"] = "refunded";
           updateData["payment.status"] = "refunded";
@@ -502,7 +502,7 @@ exports.bulkUpdateRefundStatus = async (req, res) => {
 
     const result = await Order.updateMany(
       { _id: { $in: orderIds } },
-      { $set: updateData }
+      { $set: updateData },
     );
 
     return res.status(200).json({
@@ -528,7 +528,7 @@ exports.delieverOrder = async (req, res) => {
   try {
     const { orderId } = req.body;
 
-    const order = await Order.findOne({orderId});
+    const order = await Order.findOne({ orderId });
 
     if (!order) {
       return res.status(404).json({
@@ -563,6 +563,158 @@ exports.delieverOrder = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to mark order as delivered",
+      error: error.message,
+    });
+  }
+};
+// pending payment status in db but payment was done
+exports.verifyPendingPayments = async (req, res) => {
+  try {
+    // Default to 24 hours if not provided
+    const { time } = req.body;
+    const hoursToCheck = time ? parseInt(time) : 24;
+
+    const cutoffTime = new Date(Date.now() - hoursToCheck * 60 * 60 * 1000);
+
+    // Find pending orders created within the time window that have a razorpay order ID
+    const pendingOrders = await Order.find({
+      status: "pending",
+      "payment.razorpay.orderId": { $exists: true, $ne: null },
+      createdAt: { $gte: cutoffTime },
+    })
+      .populate("userId", "name email phone")
+      .lean();
+
+    const mismatchedOrders = [];
+
+    for (const order of pendingOrders) {
+      try {
+        const razorpayOrderId = order.payment.razorpay.orderId;
+
+        // Fetch payments for this order from Razorpay
+        const payments = await razorpay.orders.fetchPayments(razorpayOrderId);
+
+        if (payments && payments.items) {
+          // Check for any successful payment (captured or authorized)
+          const successfulPayment = payments.items.find(
+            (p) => p.status === "captured" || p.status === "authorized",
+          );
+
+          if (successfulPayment) {
+            mismatchedOrders.push({
+              _id: order._id,
+              orderId: order.orderId,
+              user: order.userId,
+              orderTotal: order.pricing?.total,
+              dbStatus: order.status,
+              dbPaymentStatus: order.payment?.status,
+              razorpay: {
+                paymentId: successfulPayment.id,
+                status: successfulPayment.status,
+                amount: successfulPayment.amount / 100, // Razorpay amount is in paise
+                createdAt: successfulPayment.created_at
+                  ? new Date(successfulPayment.created_at * 1000)
+                  : null,
+              },
+              suggestion:
+                "Payment exists in Razorpay but order is pending in DB",
+            });
+          }
+        }
+      } catch (rzpError) {
+        console.error(
+          `Error fetching Razorpay payments for order ${order.orderId}:`,
+          rzpError.message,
+        );
+        // Continue to next order even if one fails
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Found ${mismatchedOrders.length} orders with pending status but successful payments in last ${hoursToCheck} hours`,
+      data: {
+        checkedOrdersCount: pendingOrders.length,
+        timeWindowHours: hoursToCheck,
+        mismatches: mismatchedOrders,
+      },
+    });
+  } catch (error) {
+    console.error("Error verifying pending payments:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to verify pending payments",
+      error: error.message,
+    });
+  }
+};
+
+// Confirm pending payment and update order
+exports.confirmPendingPayment = async (req, res) => {
+  try {
+    const { orderId, paymentId, paymentDate } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required",
+      });
+    }
+
+    const order = await Order.findOne({
+      $or: [{ orderId }, { _id: orderId }],
+    }).populate("userId", "name email");
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Update order status
+    order.status = "confirmed";
+    order.payment.status = "completed";
+    order.payment.paidAt = paymentDate ? new Date(paymentDate) : new Date();
+
+    // If payment ID provided and different, update it (optional, mainly for record)
+    if (
+      paymentId &&
+      (!order.payment.razorpay || !order.payment.razorpay.paymentId)
+    ) {
+      if (!order.payment.razorpay) order.payment.razorpay = {};
+      order.payment.razorpay.paymentId = paymentId;
+    }
+
+    await order.save();
+
+    // Send confirmation email
+    try {
+      if (order.userId && order.userId.email) {
+        await sendEmail(order.userId.email, "orderConfirmed", {
+          userName: order.userId.name,
+          orderId: order.orderId,
+          orderDate: new Date(order.createdAt).toLocaleDateString(),
+          totalAmount: order.pricing.total,
+          items: order.items,
+          shippingAddress: order.shippingAddress,
+        });
+      }
+    } catch (emailError) {
+      console.error("Failed to send order confirmation email:", emailError);
+      // We don't fail the request if email fails, but we log it
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Order confirmed and updated successfully",
+      data: order,
+    });
+  } catch (error) {
+    console.error("Error confirming pending payment:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to confirm payment",
       error: error.message,
     });
   }
