@@ -661,9 +661,14 @@ exports.confirmPendingPayment = async (req, res) => {
       });
     }
 
-    const order = await Order.findOne({
-      $or: [{ orderId }, { _id: orderId }],
-    }).populate("userId", "name email");
+    let query = { orderId: orderId };
+
+    // Only check _id if the provided orderId is a valid MongoDB ObjectId
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
+      query = { $or: [{ orderId }, { _id: orderId }] };
+    }
+
+    const order = await Order.findOne(query).populate("userId", "name email");
 
     if (!order) {
       return res.status(404).json({
