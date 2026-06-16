@@ -13,7 +13,7 @@ const orderSchema = new mongoose.Schema(
           .substr(2, 9)
           .toUpperCase()}`,
     },
-
+    idempotencyKey: { type: String, unique: true, sparse: true },
     // User information
     userId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -312,7 +312,7 @@ const orderSchema = new mongoose.Schema(
     timestamps: true, // Adds createdAt and updatedAt
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  }
+  },
 );
 
 // Indexes for better query performance
@@ -349,7 +349,7 @@ orderSchema.methods.canBeCancelled = function () {
 orderSchema.methods.canBeReturned = function () {
   if (this.status !== "delivered") return false;
   const daysSinceDelivery = Math.floor(
-    (Date.now() - this.shipping.deliveredAt) / (1000 * 60 * 60 * 24)
+    (Date.now() - this.shipping.deliveredAt) / (1000 * 60 * 60 * 24),
   );
   return daysSinceDelivery <= 7; // 7 days return policy
 };

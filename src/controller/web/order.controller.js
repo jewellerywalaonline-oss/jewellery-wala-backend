@@ -38,9 +38,27 @@ exports.createOrder = async (req, res) => {
       giftMessage,
       giftWrap,
       isCodAdvance,
+      idempotencyKey,
     } = req.body;
 
     const userId = req.user._id; // From auth middleware
+
+    // If this exact checkout attempt already produced an order, return it
+    // instead of creating a duplicate (handles double-clicks and retries).
+    if (idempotencyKey) {
+      const existingOrder = await Order.findOne({ idempotencyKey, userId });
+      if (existingOrder) {
+        return res.status(200).json({
+          success: true,
+          message: "Order already created",
+          order: {
+            orderId: existingOrder.orderId,
+            _id: existingOrder._id,
+            total: existingOrder.pricing.total,
+          },
+        });
+      }
+    }
 
     let orderItems = [];
     let subtotal = 0;
@@ -122,22 +140,28 @@ exports.createOrder = async (req, res) => {
     let discount = isCodAdvance
       ? 0
       : subtotal < 500
-      ? 0
-      : Math.round(subtotal * 0.05);
+        ? 0
+        : Math.round(subtotal * 0.05);
     let couponId = null;
 
     const shipping = subtotal > 1000 ? 0 : 50; // Free shipping above ₹1000
     const giftWrapCharges = giftWrap ? 50 : 0;
     const total = subtotal - discount + shipping + giftWrapCharges;
 
+    // COD advance: 10% of subtotal, minimum ₹100
+    const codAdvance = isCodAdvance
+      ? Math.max(100, Math.round(subtotal * 0.1))
+      : 0;
+
     // Create order
     const order = new Order({
       userId,
       purchaseType,
+      idempotencyKey,
       items: orderItems,
       pricing: {
         subtotal,
-        advance: isCodAdvance ? 100 : 0,
+        advance: codAdvance,
         discount: {
           amount: discount,
           couponCode: null,
@@ -161,7 +185,28 @@ exports.createOrder = async (req, res) => {
       },
     });
 
-    await order.save();
+    try {
+      await order.save();
+    } catch (err) {
+      // Race condition: two requests with the same idempotency key hit
+      // save() at nearly the same time. The unique index rejects the
+      // second insert — fetch and return the one that won instead of erroring.
+      if (err.code === 11000 && err.keyPattern?.idempotencyKey) {
+        const existingOrder = await Order.findOne({ idempotencyKey, userId });
+        if (existingOrder) {
+          return res.status(200).json({
+            success: true,
+            message: "Order already created",
+            order: {
+              orderId: existingOrder.orderId,
+              _id: existingOrder._id,
+              total: existingOrder.pricing.total,
+            },
+          });
+        }
+      }
+      throw err;
+    }
 
     // Send response immediately
     res.status(201).json({
@@ -211,7 +256,6 @@ exports.createOrder = async (req, res) => {
     });
   }
 };
-
 // 2. Create Razorpay Order
 exports.createRazorpayOrder = async (req, res) => {
   try {
@@ -237,7 +281,9 @@ exports.createRazorpayOrder = async (req, res) => {
     }
     // 5% discount on full purchase and 100 in advance for cod
     let options = {
-      amount: isCodAdvance ? 100 * 100 : order.pricing.total * 100,
+      amount: isCodAdvance
+        ? order.pricing.advance * 100
+        : order.pricing.total * 100,
       currency: "INR",
       receipt: order.orderId,
       notes: {
@@ -286,7 +332,7 @@ exports.verifyPayment = async (req, res) => {
 
     // Find order
     const order = await Order.findOne({ orderId, userId }).populate(
-      "items.productId"
+      "items.productId",
     );
 
     if (!order) {
@@ -315,7 +361,7 @@ exports.verifyPayment = async (req, res) => {
         orderTotal: `₹${order.pricing.total}`,
         contactEmail: process.env.MY_GMAIL,
       }).catch((err) =>
-        console.error("Failed to send payment failure email:", err)
+        console.error("Failed to send payment failure email:", err),
       );
 
       return res.status(400).json({
@@ -382,9 +428,9 @@ exports.verifyPayment = async (req, res) => {
           }).catch((err) =>
             console.error(
               `Failed to update stock for product ${item.productId}:`,
-              err
-            )
-          )
+              err,
+            ),
+          ),
         );
 
         // Clear cart if order was from cart
@@ -392,7 +438,7 @@ exports.verifyPayment = async (req, res) => {
         if (order.purchaseType === "cart") {
           cartClearPromise = Cart.findOneAndUpdate(
             { userId },
-            { $set: { items: [] } }
+            { $set: { items: [] } },
           ).catch((err) => console.error("Failed to clear cart:", err));
         }
 
@@ -416,9 +462,9 @@ exports.verifyPayment = async (req, res) => {
             shippingAddress: order.shippingAddress,
             billingAddress: order.billingAddress || order.shippingAddress,
             paymentMethod: "Online Payment",
-          }
+          },
         ).catch((err) =>
-          console.error("Failed to send order confirmation email:", err)
+          console.error("Failed to send order confirmation email:", err),
         );
 
         // Wait for all operations to complete
@@ -606,7 +652,7 @@ exports.cancelOrder = async (req, res) => {
               orderId: order.orderId,
               reason,
             },
-          }
+          },
         );
 
         // Update refund status if successful
@@ -989,7 +1035,7 @@ exports.confirmCODOrder = async (req, res) => {
 
     // Find order
     const order = await Order.findOne({ orderId, userId }).populate(
-      "items.productId"
+      "items.productId",
     );
 
     if (!order) {
@@ -1047,9 +1093,9 @@ exports.confirmCODOrder = async (req, res) => {
           }).catch((err) =>
             console.error(
               `Failed to update stock for product ${item.productId}:`,
-              err
-            )
-          )
+              err,
+            ),
+          ),
         );
 
         // Clear cart if order was from cart
@@ -1057,7 +1103,7 @@ exports.confirmCODOrder = async (req, res) => {
         if (order.purchaseType === "cart") {
           cartClearPromise = Cart.findOneAndUpdate(
             { user: userId },
-            { $set: { items: [] } }
+            { $set: { items: [] } },
           ).catch((err) => console.error("Failed to clear cart:", err));
         }
 
@@ -1081,9 +1127,9 @@ exports.confirmCODOrder = async (req, res) => {
             shippingAddress: order.shippingAddress,
             billingAddress: order.billingAddress || order.shippingAddress,
             paymentMethod: "Cash on Delivery (COD)",
-          }
+          },
         ).catch((err) =>
-          console.error("Failed to send order confirmation email:", err)
+          console.error("Failed to send order confirmation email:", err),
         );
 
         // Wait for all operations to complete
@@ -1094,7 +1140,7 @@ exports.confirmCODOrder = async (req, res) => {
         ]);
 
         console.log(
-          `Post-COD confirmation operations completed for order ${orderId}`
+          `Post-COD confirmation operations completed for order ${orderId}`,
         );
       } catch (error) {
         console.error("Error in post-COD confirmation operations:", error);
@@ -1135,7 +1181,7 @@ exports.cancelOrderByAdmin = async (req, res) => {
               orderId: order.orderId,
               reason,
             },
-          }
+          },
         );
 
         // Update refund status if successful
