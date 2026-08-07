@@ -175,12 +175,21 @@ The following `.agents/skills/` are relevant to this project:
 ## Deployment
 
 ```bash
-# Build TypeScript
+# 1. Install (must be pnpm — npm cannot resolve the `link:` protocol dependency)
+pnpm install --frozen-lockfile
+
+# 2. Build TypeScript
 pnpm build
 
-# Start production server
+# 3. Start production server
 NODE_ENV=production pnpm start
 ```
+
+> **Important for hosted platforms (Render):** this project is **pnpm-only**.
+> - `eslint-plugin-local` is declared as `link:eslint-plugin-local`; `npm install` will fail with `EUNSUPPORTEDPROTOCOL`.
+> - Set the platform **Install Command** to `pnpm install --frozen-lockfile` and **Build Command** to `pnpm build`.
+> - `pnpm-lock.yaml` **must stay in sync** with `package.json` — platforms that use frozen-lockfile installs (Vercel, Render, CI) will fail with `ERR_PNPM_OUTDATED_LOCKFILE` otherwise. Regenerate with `pnpm install` and commit.
+> - After a failed deploy, clear the platform's build cache before retrying — stale `node_modules` from a failed `npm install` breaks `tsc` (e.g. TS2688 missing `@types/node`).
 
 No Dockerfile or Procfile included — deploy as a Node.js process. Recommended:
 - Use a process manager (pm2, systemd) for process recovery
