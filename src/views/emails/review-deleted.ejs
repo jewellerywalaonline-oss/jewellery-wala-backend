@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Review Removed</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        text-align: center;
+        padding: 20px 0;
+        border-bottom: 2px solid #f0f0f0;
+        margin-bottom: 30px;
+      }
+      .content {
+        background-color: #f9f9f9;
+        padding: 30px;
+        border-radius: 5px;
+      }
+      .review-box {
+        background: #fff;
+        border-left: 4px solid #e74c3c;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 0 5px 5px 0;
+      }
+      .product-name {
+        font-weight: bold;
+        color: #555;
+      }
+      .rating-stars {
+        color: #f39c12;
+        font-size: 18px;
+        margin: 10px 0;
+      }
+      .button {
+        display: inline-block;
+        padding: 12px 24px;
+        background-color: #d4af37;
+        color: #fff !important;
+        text-decoration: none;
+        border-radius: 4px;
+        margin: 20px 0;
+        font-weight: bold;
+      }
+      .footer {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #f0f0f0;
+        font-size: 12px;
+        color: #777;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Your Review Has Been Removed</h1>
+    </div>
+
+    <div class="content">
+      <p>Dear <%= user.name %>,</p>
+      <p>
+        We're writing to let you know that your review on
+        <strong><%= product.name %></strong> has been removed by our admin team.
+      </p>
+
+      <div class="review-box">
+        <p class="product-name"><%= product.name %></p>
+        <div class="rating-stars">
+          <% for (let i = 0; i < (review.rating || 0); i++) { %>★<% } %><% for (let i = (review.rating || 0); i < 5; i++) { %>☆<% } %>
+        </div>
+        <% if (review.comment) { %>
+        <p><em>"<%= review.comment %>"</em></p>
+        <% } %>
+      </div>
+
+      <p>
+        This action was taken in accordance with our review guidelines. If you
+        have any questions about this decision, please don't hesitate to contact
+        our support team.
+      </p>
+
+      <div style="text-align: center">
+        <a href="<%= appUrl %>/contact-us" class="button">Contact Support</a>
+      </div>
+
+      <p>
+        We value your feedback and encourage you to continue sharing your
+        experiences with our products.
+      </p>
+
+      <p>
+        Thank you for your understanding.<br />
+        The <%= appName %> Team
+      </p>
+    </div>
+
+    <div class="footer">
+      <p>&copy; <%= year %> <%= appName %>. All rights reserved.</p>
+      <p>
+        <a
+          href="<%= appUrl %>"
+          style="color: #777; text-decoration: none"
+          >Visit our website</a
+        >
+      </p>
+    </div>
+  </body>
+</html>

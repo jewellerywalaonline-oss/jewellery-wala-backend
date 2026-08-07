@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Order Shipped - Jewellry Wala</title>
+    <title>Order Shipped - <%= appName %></title>
     <style>
       body {
         font-family: "Arial", sans-serif;
@@ -88,7 +88,7 @@
 
       <p>You can track your order by clicking the button below:</p>
       <a
-        href="<%= process.env.FRONTEND_URL %>/order-track?orderId=<%= order.orderId %>"
+        href="<%= appUrl %>/order-track?orderId=<%= order.orderId %>"
         class="button"
         >Track My Order</a
       >
@@ -100,12 +100,12 @@
 
       <p>Thank you for shopping with us!</p>
 
-      <p>Best regards,<br />The Jewellry Wala Team</p>
+      <p>Best regards,<br />The <%= appName %> Team</p>
     </div>
 
     <div class="footer">
       <p>
-        © <%= new Date().getFullYear() %> Jewellry Wala. All rights reserved.
+        © <%= new Date().getFullYear() %> <%= appName %>. All rights reserved.
       </p>
       <p>
         This email was sent to <%= user.email %>. If you didn't make this

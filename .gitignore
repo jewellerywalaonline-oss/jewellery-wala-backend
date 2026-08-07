@@ -15,6 +15,9 @@
 /build
 /dist
 
+# TypeScript build info
+*.tsbuildinfo
+
 # Logs
 logs
 *.log

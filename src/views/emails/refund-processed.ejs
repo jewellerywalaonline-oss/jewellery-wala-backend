@@ -263,7 +263,7 @@
       <div style="margin: 30px 0; text-align: center;">
         <p>If you have any questions about your refund, please don't hesitate to contact our support team.</p>
         <p style="margin-top: 10px;">
-          <a href="<%= process.env.CLIENT_URL || '#' %>/contact" 
+          <a href="<%= appUrl %>/contact" 
              style="display: inline-block; 
                     padding: 12px 25px; 
                     background-color: #2c3e50; 
@@ -279,13 +279,13 @@
       <p>Thank you for shopping with us!</p>
       <p>
         Best regards,<br>
-        <strong>The <%= process.env.APP_NAME || 'Jewellery Walla' %> Team</strong>
+        <strong>The <%= appName %> Team</strong>
       </p>
     </div>
 
     <div class="footer">
       <p>
-        &copy; <%= new Date().getFullYear() %> <%= process.env.APP_NAME || 'Jewellery Walla' %>. All rights reserved.<br>
+        &copy; <%= new Date().getFullYear() %> <%= appName %>. All rights reserved.<br>
         <span style="font-size: 12px; color: #95a5a6;">
           This is an automated message, please do not reply directly to this email.
         </span>
