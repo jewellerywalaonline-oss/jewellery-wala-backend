@@ -6,26 +6,50 @@ import SubSubCategory from "../../models/subSubCategory.js";
 import cache from "../../lib/cache.js";
 import { success, fail } from "../../utils/responses.js";
 
+interface NavNode {
+  slug?: string;
+  status?: boolean;
+  deletedAt?: string | null;
+  updatedAt?: string | Date;
+  subCategories?: NavNode[];
+  subSubCategories?: NavNode[];
+}
+
+const toMinimal = (nodes: NavNode[]): NavNode[] =>
+  nodes.map((node) => ({
+    slug: node.slug,
+    status: node.status,
+    deletedAt: node.deletedAt,
+    updatedAt: node.updatedAt,
+    ...(node.subCategories ? { subCategories: toMinimal(node.subCategories) } : {}),
+    ...(node.subSubCategories ? { subSubCategories: toMinimal(node.subSubCategories) } : {}),
+  }));
+
 export const navController = async (
-  _req: Request,
+  req: Request,
   res: Response,
 ): Promise<Response> => {
   try {
+    const minimal = req.query.minimal === "true";
     const cacheKey = "navigationData";
     const cached = cache.get(cacheKey);
     if (cached) {
-      return success(res, cached, "Data fetched successfully");
+      return success(
+        res,
+        minimal ? toMinimal(cached as NavNode[]) : cached,
+        "Data fetched successfully",
+      );
     }
 
     const [categories, subCategories, subSubCategories] = await Promise.all([
       Category.find({ deletedAt: null, status: true })
-        .select("_id name slug parentSubCategory image bannerId")
+        .select("_id name slug status deletedAt updatedAt parentSubCategory image bannerId")
         .lean(),
       SubCategory.find({ deletedAt: null, status: true })
-        .select("_id name slug category image bannerId")
+        .select("_id name slug status deletedAt updatedAt category image bannerId")
         .lean(),
       SubSubCategory.find({ deletedAt: null, status: true })
-        .select("_id name slug subCategory image bannerId")
+        .select("_id name slug status deletedAt updatedAt subCategory image bannerId")
         .lean(),
     ]);
 
@@ -64,7 +88,11 @@ export const navController = async (
     });
 
     cache.set(cacheKey, navigationData, 3600); // 1 hour — nav structure rarely changes, invalidated on admin CRUD
-    return success(res, navigationData, "Data fetched successfully");
+    return success(
+      res,
+      minimal ? toMinimal(navigationData as NavNode[]) : navigationData,
+      "Data fetched successfully",
+    );
   } catch (error) {
     return fail(
       res,

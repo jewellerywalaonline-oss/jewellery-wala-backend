@@ -600,13 +600,16 @@ export const getProductByFilter = async (
   }
 };
 
-export const getAll = async (_req: Request, res: Response): Promise<Response> => {
+export const getAll = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const products = await Product.find({ deletedAt: null, status: "active" })
-      .populate(PRODUCT_POPULATE)
-      .select(PRODUCT_SELECT)
-      .sort({ order: -1, createdAt: -1 })
-      .lean();
+    const minimal = req.query.minimal === "true";
+    let query = Product.find({ deletedAt: null, status: "active" });
+    if (minimal) {
+      query = query.select("slug updatedAt");
+    } else {
+      query = query.populate(PRODUCT_POPULATE).select(PRODUCT_SELECT);
+    }
+    const products = await query.sort({ order: -1, createdAt: -1 }).lean();
     return success(res, products, "Products fetched successfully");
   } catch (err) {
     return fail(
