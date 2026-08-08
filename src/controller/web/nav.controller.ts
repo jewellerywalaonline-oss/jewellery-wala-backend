@@ -32,24 +32,30 @@ export const navController = async (
   try {
     const minimal = req.query.minimal === "true";
     const cacheKey = "navigationData";
-    const cached = cache.get(cacheKey);
+    const cached = minimal ? undefined : (cache.get(cacheKey) as NavNode[] | undefined);
     if (cached) {
-      return success(
-        res,
-        minimal ? toMinimal(cached as NavNode[]) : cached,
-        "Data fetched successfully",
-      );
+      return success(res, cached, "Data fetched successfully");
     }
+
+    const categorySelect = minimal
+      ? "slug status deletedAt updatedAt"
+      : "_id name slug status deletedAt updatedAt parentSubCategory image bannerId";
+    const subCategorySelect = minimal
+      ? "slug status deletedAt updatedAt category"
+      : "_id name slug status deletedAt updatedAt category image bannerId";
+    const subSubCategorySelect = minimal
+      ? "slug status deletedAt updatedAt subCategory"
+      : "_id name slug status deletedAt updatedAt subCategory image bannerId";
 
     const [categories, subCategories, subSubCategories] = await Promise.all([
       Category.find({ deletedAt: null, status: true })
-        .select("_id name slug status deletedAt updatedAt parentSubCategory image bannerId")
+        .select(categorySelect)
         .lean(),
       SubCategory.find({ deletedAt: null, status: true })
-        .select("_id name slug status deletedAt updatedAt category image bannerId")
+        .select(subCategorySelect)
         .lean(),
       SubSubCategory.find({ deletedAt: null, status: true })
-        .select("_id name slug status deletedAt updatedAt subCategory image bannerId")
+        .select(subSubCategorySelect)
         .lean(),
     ]);
 
@@ -87,7 +93,9 @@ export const navController = async (
       };
     });
 
-    cache.set(cacheKey, navigationData, 3600); // 1 hour — nav structure rarely changes, invalidated on admin CRUD
+    if (!minimal) {
+      cache.set(cacheKey, navigationData, 3600); // 1 hour — nav structure rarely changes, invalidated on admin CRUD
+    }
     return success(
       res,
       minimal ? toMinimal(navigationData as NavNode[]) : navigationData,

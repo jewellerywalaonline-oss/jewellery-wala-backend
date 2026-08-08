@@ -73,7 +73,7 @@ const productSchema = new Schema(
     },
     weight: {
       type: String,
-      required: [true, "Please enter a weight greater than or equal to 10 grams"],
+      required: [true, "Please enter a weight (grams or milligrams)"],
     },
     length: {
       type: Number,
