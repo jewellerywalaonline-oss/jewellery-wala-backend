@@ -43,19 +43,25 @@ export const listAiResponses = async (
   res: Response,
 ): Promise<Response> => {
   try {
-    const { page: reqPage, limit: reqLimit, pageFilter } = req.body as {
+    const { page: reqPage, limit: reqLimit, pageFilter, search } = req.body as {
       page?: number;
       limit?: number;
       pageFilter?: string;
+      search?: string;
     };
 
     const pageNum = typeof reqPage === "number" ? reqPage : 1;
     const limit = typeof reqLimit === "number" ? reqLimit : 50;
     const skip = (pageNum - 1) * limit;
 
-    const filter: { page?: string } = {};
+    const filter: Record<string, unknown> = {};
     if (pageFilter) {
       filter.page = pageFilter;
+    }
+    if (search && search.trim()) {
+      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(escaped, "i");
+      filter.$or = [{ prompt: re }, { response: re }, { page: re }];
     }
 
     const [responses, total] = await Promise.all([

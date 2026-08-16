@@ -38,6 +38,7 @@ export const createOrder = async (
       purchaseType,
       items,
       isPersonalizedName,
+      personalizedItems,
       shippingAddress,
       billingAddress,
       notes,
@@ -59,6 +60,12 @@ export const createOrder = async (
         sizeId?: string;
       }>;
       isPersonalizedName?: string;
+      personalizedItems?: Array<{
+        productId: string;
+        colorId?: string;
+        sizeId?: string;
+        name: string;
+      }>;
       shippingAddress: {
         fullName: string;
         phone: string;
@@ -133,22 +140,93 @@ export const createOrder = async (
       return;
     }
 
-    const orderItems: OrderItemInput[] = validatedItems.map((vi) => ({
-      productId: vi.productId,
-      colorId: vi.colorId,
-      sizeId: vi.sizeId ?? null,
-      name: vi.name,
-      description: vi.description,
-      quantity: vi.quantity,
-      isPersonalized: vi.isPersonalized,
-      personalizedName: vi.isPersonalized ? (isPersonalizedName ?? null) : null,
-      priceAtPurchase: vi.priceAtPurchase,
-      subtotal: vi.subtotal,
-      addedFrom: purchaseType === "cart" ? "cart" : "direct",
-      images: vi.images,
-      sku: vi.sku,
-      variantName: vi.variantName ?? null,
-    }));
+    // ── Per-item personalization names ──────────────────────────────────
+    // The checkout page can submit a different engraved name for each
+    // personalized product (cart checkout with multiple personalized items).
+    // Falls back to the legacy single `isPersonalizedName` for direct buys.
+    const PERSONALIZED_NAME_RE = /^[a-zA-Z0-9\s,.'&-]+$/;
+    const MAX_NAME_LEN = 25;
+
+    const cleanPersonalizedItems: NonNullable<typeof personalizedItems> =
+      (personalizedItems ?? [])
+        .map((pi) => ({
+          productId: String(pi.productId ?? ""),
+          colorId: pi.colorId ? String(pi.colorId) : undefined,
+          sizeId: pi.sizeId ? String(pi.sizeId) : undefined,
+          name: String(pi.name ?? "").trim(),
+        }))
+        .filter((pi) => pi.productId && pi.name);
+
+    for (const pi of cleanPersonalizedItems) {
+      if (pi.name.length > MAX_NAME_LEN) {
+        res.status(400).json({
+          success: false,
+          message: `Personalized name for one of the products exceeds ${MAX_NAME_LEN} characters`,
+        });
+        return;
+      }
+      if (!PERSONALIZED_NAME_RE.test(pi.name)) {
+        res.status(400).json({
+          success: false,
+          message:
+            "Personalized names may only contain letters, numbers, spaces and basic punctuation",
+        });
+        return;
+      }
+    }
+
+    // Match precedence: exact productId+colorId+sizeId, then productId only.
+    const nameForItem = (vi: {
+      productId: string;
+      colorId?: string | null;
+      sizeId?: string | null;
+    }): string | null => {
+      const exact = cleanPersonalizedItems.find(
+        (pi) =>
+          pi.productId === vi.productId &&
+          (pi.colorId ?? "") === String(vi.colorId ?? "") &&
+          (pi.sizeId ?? "") === String(vi.sizeId ?? ""),
+      );
+      if (exact) return exact.name;
+      const byProduct = cleanPersonalizedItems.find(
+        (pi) => pi.productId === vi.productId,
+      );
+      return byProduct?.name ?? null;
+    };
+
+    const missingPersonalizedNames: string[] = [];
+    const orderItems: OrderItemInput[] = validatedItems.map((vi) => {
+      const itemName = vi.isPersonalized
+        ? (nameForItem(vi) ?? (isPersonalizedName ?? null))
+        : null;
+      if (vi.isPersonalized && !itemName) {
+        missingPersonalizedNames.push(vi.name);
+      }
+      return {
+        productId: vi.productId,
+        colorId: vi.colorId,
+        sizeId: vi.sizeId ?? null,
+        name: vi.name,
+        description: vi.description,
+        quantity: vi.quantity,
+        isPersonalized: vi.isPersonalized,
+        personalizedName: itemName,
+        priceAtPurchase: vi.priceAtPurchase,
+        subtotal: vi.subtotal,
+        addedFrom: purchaseType === "cart" ? "cart" : "direct",
+        images: vi.images,
+        sku: vi.sku,
+        variantName: vi.variantName ?? null,
+      };
+    });
+
+    if (missingPersonalizedNames.length > 0) {
+      res.status(400).json({
+        success: false,
+        message: `Please enter a personalized name for: ${missingPersonalizedNames.join(", ")}`,
+      });
+      return;
+    }
     const subtotal = validatedItems.reduce((sum, i) => sum + i.subtotal, 0);
 
     const discount = isCodAdvance
